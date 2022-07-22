@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+
+<!--    app:layout_constraintBottom_toBottomOf="parent"-->
+<!--    app:layout_constraintLeft_toLeftOf="parent"-->
+<!--    app:layout_constraintRight_toRightOf="parent"-->
+<!--    app:layout_constraintTop_toTopOf="parent"-->
+
+    <ScrollView
+        android:id="@+id/scrollView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="一一一一一一一一一一一一一一一一一一一一" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="二二二二二二二二二二二二二二二二二二二二二" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="三三三三三三三三三三三三三三三三三三三三三" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="四四四四四四四四四四四四四四四四四四四四四" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="五五五五五五五五五五五五五五五五五五五五五" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="六六六六六六六六六六六六六六六六六六六六" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="七七七七七七七七七七七七七七七七七七七七七" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="八八八八八八八八八八八八八八八八八八八八八" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="九九九九九九九九九九九九九九九九九九九九" />
+
+            <TextView
+                android:id="@+id/ten_textview"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="十十十十十十十十十十十十十十十十十十十十" />
+
+            <TextView
+                android:id="@+id/one_textview"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="一一一一一一一一一一一一一一一一一一一一" />
+
+            <TextView
+                android:id="@+id/two_textview"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="二二二二二二二二二二二二二二二二二二二二二" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="三三三三三三三三三三三三三三三三三三三三三" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="四四四四四四四四四四四四四四四四四四四四四" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="五五五五五五五五五五五五五五五五五五五五五" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="六六六六六六六六六六六六六六六六六六六六" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:textColor="#FF0000"
+                android:text="七七七七七七七七七七七七七七七七七七七七七" />
+
+
+        </LinearLayout>
+    </ScrollView>
+
+</FrameLayout>
