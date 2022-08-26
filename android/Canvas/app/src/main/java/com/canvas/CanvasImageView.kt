@@ -34,7 +34,6 @@ class CanvasImageView : AppCompatImageView {
             color = resources.getColor(R.color.green, null)
             isAntiAlias = true
         }
-        canvas?.drawDoubleRoundRect()
         canvas?.drawCircle(point, point, radius, paint)
     }
 }
