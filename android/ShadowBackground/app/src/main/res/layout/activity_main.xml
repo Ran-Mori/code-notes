@@ -5,14 +5,19 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#FFFFFF"
     tools:context=".MainActivity">
 
-    <RelativeLayout
+    <FrameLayout
         android:layout_width="300dp"
-        android:layout_height="200dp"
-        android:layout_gravity="center"
-        android:background="@drawable/now_background">
+        android:layout_height="300dp"
+        android:background="@drawable/bessel_shadow"
+        android:layout_gravity="top|center_horizontal" />
 
-    </RelativeLayout>
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:background="@drawable/linear_gradient_shadow"
+        android:layout_gravity="bottom|center_horizontal"/>
 
 </FrameLayout>
