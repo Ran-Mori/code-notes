@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    tools:context=".MainActivity">
+
+    <!--
+        elevation生效的话必须设置一个background
+        elevation设置得过大，反而看得不明显
+    -->
+    <View
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:background="#00FF00"
+        android:elevation="20dp"
+        android:outlineSpotShadowColor="#FF0000"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <FrameLayout
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:background="#FF0000"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <!--
+            本来蓝色应该被盖住一部分的
+            但加了elevation="2dp"后，它就在最上面了，反而把下面的绿色的盖住了
+            如果不加，默认都是elevation="0dp"
+        -->
+        <FrameLayout
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:background="#0000FF"
+            android:elevation="2dp"/>
+
+        <FrameLayout
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:background="#00FF00" />
+
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
