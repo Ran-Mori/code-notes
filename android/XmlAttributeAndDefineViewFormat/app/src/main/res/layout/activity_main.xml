@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <com.baj.SelfTextView
+        android:id="@+id/self_text_vew"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:background="#FF0000"
+        android:textSize="30sp"
+        android:textColor="@color/white"
+        app:self_define_text="my_self_define_text"
+        android:text="@string/self_text_view"
+        android:gravity="center"
+        android:layout_gravity="center" />
+
+</FrameLayout>
