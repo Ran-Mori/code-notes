@@ -1,5 +1,6 @@
 package com.baj
 
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -21,6 +22,7 @@ class MainActivity : AppCompatActivity() {
 
         textView?.setOnClickListener {
             Log.d(TAG, "text view onClick")
+            Log.d(TAG, "brand = ${Build.BRAND}, sdk_int = ${Build.VERSION.SDK_INT}")
         }
     }
 }
