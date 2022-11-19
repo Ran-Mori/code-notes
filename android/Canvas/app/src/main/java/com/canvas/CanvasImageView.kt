@@ -14,7 +14,7 @@ class CanvasImageView : AppCompatImageView {
 
     companion object {
         fun dp2px(context: Context, dp: Int): Float =
-            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), context.resources.displayMetrics).toFloat()
+            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), context.resources.displayMetrics)
     }
 
     constructor(context: Context) : super(context)
