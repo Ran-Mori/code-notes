@@ -407,3 +407,15 @@ startActivity(intent)
 
 ***
 
+## ViewCoordinate
+
+### 坐标
+
+* `left, top, right, bottom, elevation, translateX, translateY, translateZ, x, y z `
+
+### translate
+
+* 只改变`draw`渲染，不会重新进行`measure, layout`
+* 是一种低代价改变`View`位置的参数，因为不用`layout`，常用来做动画
+
+***
