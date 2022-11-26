@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         sdvView = findViewById(R.id.sdv_view)
-
+        
         // IzumiSakai -> https://b-ssl.duitang.com/uploads/item/201707/03/20170703231208_GEQws.thumb.700_0.jpeg
         // KID -> https://pic3.zhimg.com/v2-594d525c95d615fceb6f9f3aabdca76a_r.jpg?source=1940ef5c
 
