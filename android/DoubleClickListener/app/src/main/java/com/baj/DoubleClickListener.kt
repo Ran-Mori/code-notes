@@ -22,24 +22,24 @@ class DoubleClickListener(
 
     private val gestureDetector =
         GestureDetector(view.context, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onDown(e: MotionEvent?): Boolean {
+
+            override fun onDown(e: MotionEvent): Boolean {
                 return true
             }
 
-            override fun onSingleTapUp(e: MotionEvent?): Boolean {
-                e ?: return false
+            override fun onSingleTapUp(e: MotionEvent): Boolean {
                 view.postDelayed(mSingleClickTask, mDoubleClickInterval)
                 return true
             }
 
-            override fun onDoubleTap(e: MotionEvent?): Boolean {
+            override fun onDoubleTap(e: MotionEvent): Boolean {
                 view.removeCallbacks(mSingleClickTask)
                 onDoubleClickListener?.onClick(view)
                 return true
             }
         })
 
-    override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+    override fun onTouch(v: View, event: MotionEvent): Boolean {
         return gestureDetector.onTouchEvent(event)
     }
 }
