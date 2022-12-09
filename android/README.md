@@ -104,7 +104,7 @@ fun dp2px(context: Context, dp: Int): Float =
 
 ### 高度就是高度
 
-* `FrameLayout`中底层的`View`会因为有`elevation`值而到上面
+* `FrameLayout`中栈底的`View`会因为有`elevation`值而到栈顶
 
 ***
 
@@ -376,34 +376,11 @@ startActivity(intent)
 
 1. 写一个以`GestureDetector`为成员变量，且实现`View.OnTouchListener`的类
 
-   ```kotlin
-   class DoubleClickListener(
-       private val view: View,
-       private val onDoubleClick: ((view: View?) -> Unit)?
-   ): View.OnTouchListener {
-       private val gestureDetector =
-           GestureDetector(view.context, object : GestureDetector.SimpleOnGestureListener() {
-               override fun onDown(e: MotionEvent?): Boolean {
-                   return true
-               }
-   
-               override fun onSingleTapUp(e: MotionEvent?): Boolean {
-                   return true
-               }
-   
-               override fun onDoubleTap(e: MotionEvent?): Boolean {
-                   onDoubleClick?.invoke(view)
-                   return true
-               }
-           })
-   
-       override fun onTouch(v: View?, event: MotionEvent?): Boolean {
-           return gestureDetector.onTouchEvent(event)
-       }
-   }
-   ```
+2. `GestureDetector`已经能够区分`onSingleTapUp`和`onDoubleTap`
 
-2. 赋值 -> `setOnTouchListener(DoubleClickListener(this) { //do something }`
+3. 在`onSingleTapUp`里`postDelay`双击间隔时间的一个单击事件，在`onDoubleTap`中取消事件。如果在双击时间之内则会被取消，负责就会执行
+
+4. 将这个类赋值给`setOnTouchListener(OnTouchListener l)`
 
 ***
 
@@ -417,5 +394,26 @@ startActivity(intent)
 
 * 只改变`draw`渲染，不会重新进行`measure, layout`
 * 是一种低代价改变`View`位置的参数，因为不用`layout`，常用来做动画
+
+***
+
+## FrescoMask
+
+### url -> 上屏粗流程
+
+1. fresco进行网络请求
+2. 将网络请求的`jpg`图片封装成位图`BitMap`
+3. `BitMap`封装成`BitMapDrawable`
+4. `BitMapDrawable`在屏幕上显示出来
+
+### Process
+
+* 是什么 -> fresco提供的一个API
+* 作用 -> 在上述过程的 2~3之间提供一个hook，对`BitMap`做一些自定义的处理
+
+### FILTER_BITMAP_FLAG
+
+* 是什么 -> `Paint`的一个常量
+* 作用 -> 当对`BitMap`进行缩放时，决定像素的采样。采用双线性采样或最邻近采样
 
 ***
