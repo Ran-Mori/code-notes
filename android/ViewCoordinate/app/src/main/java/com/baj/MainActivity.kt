@@ -26,6 +26,10 @@ class MainActivity : AppCompatActivity() {
             TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 300F, applicationContext.resources.displayMetrics)
 
         textView?.setOnClickListener {
+            it.scrollTo(it.scrollX, it.scrollY + 100)
+//            it.invalidate()
+//            it.postInvalidate()
+//            it.requestLayout()
             printCoordinate(it)
         }
     }

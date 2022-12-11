@@ -392,8 +392,29 @@ startActivity(intent)
 
 ### translate
 
-* 只改变`draw`渲染，不会重新进行`measure, layout`
-* 是一种低代价改变`View`位置的参数，因为不用`layout`，常用来做动画
+* 设置`translate`后只重新`draw`，不会重新进行`measure, layout`
+* 是一种低代价改变`View`位置的参数，因为不用`measure、layout`，常用来做动画
+* 设置后重新调用`requestLayout`依然不会使`translate`失效
+
+### scroll
+
+* 当一个View设置`mScrollX/mScrollY`后，会对`children`重新进行`draw`但不会重新进行`measure、layout`
+* `scroll`不改变View本身的大小，不改变本身的`backgroundDrawable`，它唯一改变的是`children`的位置，且不重新测量和布局
+* 设置后重新调用`requestLayout`会使`mScrollX/mScrollY`失效
+
+### View#scrollTo
+
+* 不调用`measure、layout`，只调用`draw`，不改变自身而改变`children`
+
+### invalidate
+
+* 分为`View#invalidate()`和`View#postInvadiate()`
+* 不调用`measure、layout`，只调用`draw`
+
+### View#requestLayout
+
+* 会传递到`ViewRootImpl`
+* `measure、layout、draw`都会调用到，成本高
 
 ***
 

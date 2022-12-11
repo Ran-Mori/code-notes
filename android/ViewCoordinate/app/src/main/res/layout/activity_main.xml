@@ -24,7 +24,7 @@
         android:layout_marginTop="300dp"
         android:layout_gravity="center_horizontal" />
 
-    <TextView
+    <com.baj.SelfDefineTextView
         android:id="@+id/text_vew"
         android:layout_width="300dp"
         android:layout_height="200dp"

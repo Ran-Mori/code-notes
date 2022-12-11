@@ -7,7 +7,7 @@ android {
     compileSdk 33
 
     defaultConfig {
-        applicationId "com.baj"
+        applicationId "com.view_coordinate"
         minSdk 29
         targetSdk 33
         versionCode 1
