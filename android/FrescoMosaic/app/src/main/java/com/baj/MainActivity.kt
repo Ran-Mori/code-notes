@@ -30,45 +30,47 @@ class MainActivity : AppCompatActivity() {
         // IzumiSakai -> https://b-ssl.duitang.com/uploads/item/201707/03/20170703231208_GEQws.thumb.700_0.jpeg
         // KID -> https://pic3.zhimg.com/v2-594d525c95d615fceb6f9f3aabdca76a_r.jpg?source=1940ef5c
 
-        val mController = Fresco.newDraweeControllerBuilder()
-            .setImageRequest(
-                ImageRequestBuilder.newBuilderWithSource(Uri.parse("https://pic3.zhimg.com/v2-594d525c95d615fceb6f9f3aabdca76a_r.jpg?source=1940ef5c"))
-                    .setPostprocessor(ScaledMosaicProcessor())
+        sdvView?.setOnClickListener {
+            val mController = Fresco.newDraweeControllerBuilder()
+                .setImageRequest(
+                    ImageRequestBuilder.newBuilderWithSource(Uri.parse("https://pic3.zhimg.com/v2-594d525c95d615fceb6f9f3aabdca76a_r.jpg?source=1940ef5c"))
+                        .setPostprocessor(ScaledMosaicProcessor())
 //                    .setPostprocessor(EachPixelMosaicProcessor())
-                    .setRequestListener(object : BaseRequestListener() {
-                        private var startTime: Long = 0
-                        override fun onRequestStart(
-                            request: ImageRequest?,
-                            callerContext: Any?,
-                            requestId: String?,
-                            isPrefetch: Boolean
-                        ) {
-                            super.onRequestStart(request, callerContext, requestId, isPrefetch)
-                            startTime = System.currentTimeMillis()
-                        }
+                        .setRequestListener(object : BaseRequestListener() {
+                            private var startTime: Long = 0
+                            override fun onRequestStart(
+                                request: ImageRequest?,
+                                callerContext: Any?,
+                                requestId: String?,
+                                isPrefetch: Boolean
+                            ) {
+                                super.onRequestStart(request, callerContext, requestId, isPrefetch)
+                                startTime = System.currentTimeMillis()
+                            }
 
-                        override fun onRequestSuccess(
-                            request: ImageRequest?,
-                            requestId: String?,
-                            isPrefetch: Boolean
-                        ) {
-                            super.onRequestSuccess(request, requestId, isPrefetch)
-                            Log.d(TAG, "ImageRequest spend time = ${System.currentTimeMillis() - startTime}")
-                        }
-                    })
-                    .build()
-            )
-            .setControllerListener(object: BaseControllerListener<ImageInfo>() {
-                override fun onFinalImageSet(id: String?, imageInfo: ImageInfo?, animatable: Animatable?) {
-                    Log.d(TAG,"onFinalImageSet")
-                }
+                            override fun onRequestSuccess(
+                                request: ImageRequest?,
+                                requestId: String?,
+                                isPrefetch: Boolean
+                            ) {
+                                super.onRequestSuccess(request, requestId, isPrefetch)
+                                Log.d(TAG, "ImageRequest spend time = ${System.currentTimeMillis() - startTime}")
+                            }
+                        })
+                        .build()
+                )
+                .setControllerListener(object: BaseControllerListener<ImageInfo>() {
+                    override fun onFinalImageSet(id: String?, imageInfo: ImageInfo?, animatable: Animatable?) {
+                        Log.d(TAG,"onFinalImageSet")
+                    }
 
-                override fun onFailure(id: String?, throwable: Throwable?) {
-                    Log.d(TAG,"onFailure")
-                }
-            })
-            .build()
+                    override fun onFailure(id: String?, throwable: Throwable?) {
+                        Log.d(TAG,"onFailure")
+                    }
+                })
+                .build()
 
-        sdvView?.controller = mController
+            sdvView?.controller = mController
+        }
     }
 }
