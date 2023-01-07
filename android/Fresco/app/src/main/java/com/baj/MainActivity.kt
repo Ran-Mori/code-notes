@@ -1,4 +1,4 @@
-package com.fresco
+package com.baj
 
 import android.graphics.drawable.Animatable
 import android.net.Uri
@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         sdvView = findViewById(R.id.sdv_view)
-
+        
         // IzumiSakai -> https://b-ssl.duitang.com/uploads/item/201707/03/20170703231208_GEQws.thumb.700_0.jpeg
         // KID -> https://pic3.zhimg.com/v2-594d525c95d615fceb6f9f3aabdca76a_r.jpg?source=1940ef5c
 
@@ -55,19 +55,18 @@ class MainActivity : AppCompatActivity() {
                                 Log.d(TAG, "ImageRequest spend time = ${System.currentTimeMillis() - startTime}")
                             }
                         })
+                        //把cache都关掉方便断点看整个流程
+                        .disableDiskCache()
+                        .disableMemoryCache()
                         .build()
                 )
-                .setControllerListener(object : BaseControllerListener<ImageInfo>() {
-                    override fun onFinalImageSet(
-                        id: String?,
-                        imageInfo: ImageInfo?,
-                        animatable: Animatable?
-                    ) {
-                        Log.d(TAG, "onFinalImageSet")
+                .setControllerListener(object: BaseControllerListener<ImageInfo>() {
+                    override fun onFinalImageSet(id: String?, imageInfo: ImageInfo?, animatable: Animatable?) {
+                        Log.d(TAG,"onFinalImageSet")
                     }
 
                     override fun onFailure(id: String?, throwable: Throwable?) {
-                        Log.d(TAG, "onFailure")
+                        Log.d(TAG,"onFailure")
                     }
                 })
                 .build()

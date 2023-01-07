@@ -1,4 +1,4 @@
-package com.fresco
+package com.baj
 
 import android.app.Application
 import com.facebook.drawee.backends.pipeline.Fresco
