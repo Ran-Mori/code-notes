@@ -19,7 +19,7 @@
             </intent-filter>
         </activity>
 
-        <receiver android:name="com.widget.WidgetProvider"
+        <receiver android:name="com.widget.CurrentMoodWidgetProvider"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
