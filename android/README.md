@@ -570,37 +570,67 @@ startActivity(intent)
 
 ## NegativeMargin
 
-* 没啥笔记，自己看代码吧
+### margin
+
+* `margin`的值可以为负，为负表示画在父View的外部
+
+### clipChildren
+
+* `Defines whether a child is limited to draw inside of its bounds or not.`
 
 ***
 
 ## Rxjava
 
-* 没啥笔记，自己看代码吧
+### Subject
+
+* `Represents an Observer and an Observable at the same time, allowing multicasting events from a single source to multiple child Observers.`
+* 各种`Subject`的区别有实际代码通过log表现
+
+### 执行顺序
+
+* 验证`Observable、Observer、map`等操作的执行顺序
+* 验证`observeOn、subscribeOn`线程的区别
 
 ***
 
 ## ScrollView
 
-* 没啥笔记，自己看代码吧
+### 内容
+
+* `ScrollView#scrollTo()`和`ScrollView#scrollBy()`
+* `scrollX、scrollY`
 
 ***
 
 ## SelfDefineView
 
-* 没啥笔记，自己看代码吧
+### xml自定义属性
+
+### 自定义View支持wrap_content
+
+### 如何画一个圆
 
 ***
 
 ## ShadowBackground
 
-* 没啥笔记，自己看代码吧
+### svg
+
+* 是一种图片的存储格式，和`jpg、png`一样
+* 存储的是点与线的数学关系，而不是位图
+
+### android矢量图
+
+* 矢量图可以理解成是一个接口，而Android的`xml drawable`是对这个接口的实现
+
+### 灰度渐变矢量图如何画
 
 ***
 
 ## ShareElement
 
-* 没啥笔记，自己看代码吧
+* 代码有点复杂，自己看代码吧
 
 ***
 

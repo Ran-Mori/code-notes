@@ -15,24 +15,30 @@ private fun testAllSubject() {
 private fun testSingleSubject(subject: Subject<String>) {
     println("_______________test_${subject.javaClass.name}_start_______________")
 
-    subject.subscribe {
+    subject.subscribe ({
         println("first subscriber, result = $it")
+    }) {
+
     }
 
     subject.onNext("onNext 1")
     subject.onNext("onNext 2")
     subject.onNext("onNext 3")
 
-    subject.subscribe {
+    subject.subscribe ({
         println("second subscriber, result = $it")
+    }) {
+
     }
 
     subject.onNext("onNext 4")
     subject.onNext("onNext 5")
     subject.onNext("onNext 6")
 
-    subject.subscribe {
+    subject.subscribe ({
         println("third subscriber, result = $it")
+    }) {
+
     }
 
     subject.onNext("onNext 7")
@@ -40,8 +46,10 @@ private fun testSingleSubject(subject: Subject<String>) {
 
     subject.onComplete()
 
-    subject.subscribe {
+    subject.subscribe ({
         println("forth subscriber, result = $it")
+    }) {
+
     }
 
     println("_______________test_${subject.javaClass.name}_end_______________")
