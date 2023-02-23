@@ -28,6 +28,118 @@
 
 ***
 
+## BitmapDrawableCanvas
+
+### Bitmap
+
+* 参考博客 -> [Android Bitmap详解](https://www.jianshu.com/p/28c249278c49)
+
+* 本质 -> 是一个位图，很多核心的方法全是`native`的，可以简单的把它理解成像素矩阵
+
+* 创建 -> 一般都是直接或者间接通过`InputStream`或者`Byte[]`来进行创建
+
+  ```java
+  public class BitmapFactory {
+    public static Bitmap decodeFile(String pathName);
+    public static Bitmap decodeResource(Resources res, int id);
+    public static Bitmap decodeByteArray(byte[] data, int offset, int length);
+    public static Bitmap decodeStream(InputStream is);
+  }
+  ```
+
+* 重要方法
+
+  1. `recycle()` -> free native object, clear reference to the pixel data.
+
+
+### Drawable
+
+* 参考博客链接 -> [Android Drawable 详解](https://www.jianshu.com/p/d6c791709949)
+
+* 本质：`something that can be drawn.`表示可以被绘制在`canvas`上的东西
+
+* 重要方法
+
+  1. `inflate()` -> 每一个子类`Drawable`都应该去实现，规定了从`xml`如何创建一个对应的`Drawable`
+
+     ```java
+     public final class DrawableInflater {
+       Drawable inflateFromXmlForDensity() {
+         //通过xml tag的名字确定创建那个drawable
+         Drawable drawable = inflateFromTag(name);
+         //调用这个drawable的inflate方法
+         drawable.inflate(mRes, parser, attrs, theme);
+         return drawable;
+       }
+       
+       private Drawable inflateFromTag(String name) {
+         //根据tag名称创建对应的drawable
+         switch (name) {
+                 case "selector":
+                     return new StateListDrawable();
+                 case "level-list":
+                     return new LevelListDrawable();
+                 case "layer-list":
+                     return new LayerDrawable();
+         }
+       }
+     }
+     ```
+
+  2. `setBounds()` -> 当在`canvas`进行`draw`时，规定好位置和区域。即决定了此`Drawable`被绘制在`canvas`的那个位置以及绘制多大。注意它不是决定`drawable`那部分被`draw`，而是决定`canvas`那部分来`draw`整个`drawable`
+
+  3. `draw(Canvas canvas)` -> 如何把这个`drawable`绘制到`convas`上，这依赖每个`Drawable`去自己实现
+
+* 创建
+
+  ```java
+  public abstract class Drawable {
+    public static Drawable createFromStream(InputStream is);
+    public static Drawable createFromResourceStream(Resources res);
+    public static Drawable createFromXml(Resources r);
+    public static Drawable createFromPath(String pathName);
+  }
+  ```
+
+### Canvas
+
+* 是什么 -> 提供了`draw`的方法，即暴露了`draw`的能力
+* `draw somethind`的四个必备要素
+  1. `A Bitmap to hold the pixels`
+  2. `a Canvas to host the draw call`
+  3. `a drawing primitive (e.g. Rect, Path, text, Bitmap)`
+  4. `a paint`
+
+### 相互转换
+
+1. `Bitmap` -> `Drawable`
+
+   ```kotlin
+   val bitmap = BitmapFactory.decodeResource(resources, R.drawable.takagi)
+   val bitmapDrawable = BitmapDrawable(resources, bitmap)
+   ```
+
+2. `Drwable` -> `Bitmap`
+
+   ```kotlin
+   val drawable = BitmapDrawable(resources, BitmapFactory.decodeResource(resources, R.drawable.takagi))
+               drawable.setBounds(200, 200, 500 ,500)
+   val bitmap = Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+   val canvas = Canvas(bitmap)
+   drawable.draw(canvas)
+   ```
+
+3. View -> Bitmap
+
+   ```kotlin
+   val bitmap = Bitmap.createBitmap(textView?.width ?: 100, textView?.height ?: 100, Bitmap.Config.ARGB_8888)
+   val canvas = Canvas(bitmap)
+   textView?.draw(canvas)
+   ```
+
+
+***
+
 ## Canvas
 
 ### dp -> pix
@@ -148,6 +260,20 @@ fun dp2px(context: Context, dp: Int): Float =
   1. `public void setDisplayedChild(int whichChild)`
   2. `public void setInAnimation(Animation inAnimation)`
   3. `public void setOutAnimation(Animation outAnimation)`
+
+***
+
+## DoubleClickListener
+
+### 如何实现双击
+
+1. 写一个以`GestureDetector`为成员变量，且实现`View.OnTouchListener`的类
+
+2. `GestureDetector`已经能够区分`onSingleTapUp`和`onDoubleTap`
+
+3. 在`onSingleTapUp`里`postDelay`双击间隔时间的一个单击事件，在`onDoubleTap`中取消事件。如果在双击时间之内则会被取消，负责就会执行
+
+4. 将这个类赋值给`setOnTouchListener(OnTouchListener l)`
 
 ***
 
@@ -370,17 +496,111 @@ startActivity(intent)
 
 ***
 
-## DoubleClickListener
+## CBWidget
 
-### 如何实现双击
+### 基本原理
 
-1. 写一个以`GestureDetector`为成员变量，且实现`View.OnTouchListener`的类
+* 将`WidgetProvider`注册为一个`BroadCastReciver`，接收各种广播通知尤其是`android.appwidget.action.APPWIDGET_UPDATE`
+* 在初始化或者`update`的时候设置好各个`View`的点击事件，不过要通过`RemoteView`的`api`来设置，和传统的`View#setOnClickListener`有点不同
 
-2. `GestureDetector`已经能够区分`onSingleTapUp`和`onDoubleTap`
+### 使用过程 
 
-3. 在`onSingleTapUp`里`postDelay`双击间隔时间的一个单击事件，在`onDoubleTap`中取消事件。如果在双击时间之内则会被取消，负责就会执行
+* [Create a simple widget](https://developer.android.com/develop/ui/views/appwidgets)
 
-4. 将这个类赋值给`setOnTouchListener(OnTouchListener l)`
+***
+
+## Compose
+
+* 不需要笔记，直接看代码吧
+
+## Coroutines
+
+* 代码啥都没有，先放这儿吧
+
+## EventBus
+
+### [笔记链接](https://github.com/IzumiSakai-zy/various-kinds-learning/blob/master/daily-android.md)
+
+## EventDispatch
+
+### [笔记链接](https://github.com/IzumiSakai-zy/various-kinds-learning/blob/master/android-develop-explore-art.md)
+
+## Fresco
+
+### [笔记链接](https://github.com/IzumiSakai-zy/various-kinds-learning/blob/master/daily-android.md)
+
+## FrescoMask
+
+### url -> 上屏粗流程
+
+1. fresco进行网络请求
+2. 将网络请求的`jpg`图片封装成位图`BitMap`
+3. `BitMap`封装成`BitMapDrawable`
+4. `BitMapDrawable`在屏幕上显示出来
+
+### Process
+
+* 是什么 -> fresco提供的一个API
+* 作用 -> 在上述过程的 2~3之间提供一个hook，对`BitMap`做一些自定义的处理
+
+### FILTER_BITMAP_FLAG
+
+* 是什么 -> `Paint`的一个常量
+* 作用 -> 当对`BitMap`进行缩放时，决定像素的采样。采用双线性采样或最邻近采样
+
+***
+
+## LifeCycleOwner
+
+### [笔记链接](https://github.com/IzumiSakai-zy/various-kinds-learning/blob/master/daily-android.md)
+
+***
+
+## LiveData
+
+### [笔记链接](https://github.com/IzumiSakai-zy/various-kinds-learning/blob/master/daily-android.md)
+
+***
+
+## MeasureLayoutDraw
+
+### [笔记链接](https://github.com/IzumiSakai-zy/various-kinds-learning/blob/master/android-develop-explore-art.md)
+
+***
+
+## NegativeMargin
+
+* 没啥笔记，自己看代码吧
+
+***
+
+## Rxjava
+
+* 没啥笔记，自己看代码吧
+
+***
+
+## ScrollView
+
+* 没啥笔记，自己看代码吧
+
+***
+
+## SelfDefineView
+
+* 没啥笔记，自己看代码吧
+
+***
+
+## ShadowBackground
+
+* 没啥笔记，自己看代码吧
+
+***
+
+## ShareElement
+
+* 没啥笔记，自己看代码吧
 
 ***
 
@@ -418,24 +638,9 @@ startActivity(intent)
 
 ***
 
-## FrescoMask
+## ViewOnPreDraw
 
-### url -> 上屏粗流程
-
-1. fresco进行网络请求
-2. 将网络请求的`jpg`图片封装成位图`BitMap`
-3. `BitMap`封装成`BitMapDrawable`
-4. `BitMapDrawable`在屏幕上显示出来
-
-### Process
-
-* 是什么 -> fresco提供的一个API
-* 作用 -> 在上述过程的 2~3之间提供一个hook，对`BitMap`做一些自定义的处理
-
-### FILTER_BITMAP_FLAG
-
-* 是什么 -> `Paint`的一个常量
-* 作用 -> 当对`BitMap`进行缩放时，决定像素的采样。采用双线性采样或最邻近采样
+* 没啥笔记，自己看吧
 
 ***
 
@@ -478,129 +683,3 @@ class MainActivity : AppCompatActivity() {
 
 ***
 
-## Fresco
-
-### 见`daily-android`
-
-***
-
-## BitmapDrawableCanvas
-
-### Bitmap
-
-* 参考博客 -> [Android Bitmap详解](https://www.jianshu.com/p/28c249278c49)
-
-* 本质 -> 是一个位图，很多核心的方法全是`native`的，可以简单的把它理解成像素矩阵
-
-* 创建 -> 一般都是直接或者间接通过`InputStream`或者`Byte[]`来进行创建
-
-  ```java
-  public class BitmapFactory {
-    public static Bitmap decodeFile(String pathName);
-    public static Bitmap decodeResource(Resources res, int id);
-    public static Bitmap decodeByteArray(byte[] data, int offset, int length);
-    public static Bitmap decodeStream(InputStream is);
-  }
-  ```
-
-* 重要方法
-  1. `recycle()` -> free native object, clear reference to the pixel data.
-
-
-### Drawable
-
-* 参考博客链接 -> [Android Drawable 详解](https://www.jianshu.com/p/d6c791709949)
-
-* 本质：`something that can be drawn.`表示可以被绘制在`canvas`上的东西
-
-* 重要方法
-
-  1. `inflate()` -> 每一个子类`Drawable`都应该去实现，规定了从`xml`如何创建一个对应的`Drawable`
-
-     ```java
-     public final class DrawableInflater {
-       Drawable inflateFromXmlForDensity() {
-         //通过xml tag的名字确定创建那个drawable
-         Drawable drawable = inflateFromTag(name);
-         //调用这个drawable的inflate方法
-         drawable.inflate(mRes, parser, attrs, theme);
-         return drawable;
-       }
-       
-       private Drawable inflateFromTag(String name) {
-         //根据tag名称创建对应的drawable
-         switch (name) {
-                 case "selector":
-                     return new StateListDrawable();
-                 case "level-list":
-                     return new LevelListDrawable();
-                 case "layer-list":
-                     return new LayerDrawable();
-         }
-       }
-     }
-     ```
-
-  2. `setBounds()` -> 当在`canvas`进行`draw`时，规定好位置和区域。即决定了此`Drawable`被绘制在`canvas`的那个位置以及绘制多大。注意它不是决定`drawable`那部分被`draw`，而是决定`canvas`那部分来`draw`整个`drawable`
-
-  3. `draw(Canvas canvas)` -> 如何把这个`drawable`绘制到`convas`上，这依赖每个`Drawable`去自己实现
-
-* 创建
-
-  ```java
-  public abstract class Drawable {
-    public static Drawable createFromStream(InputStream is);
-    public static Drawable createFromResourceStream(Resources res);
-    public static Drawable createFromXml(Resources r);
-    public static Drawable createFromPath(String pathName);
-  }
-  ```
-
-### Canvas
-
-* 是什么 -> 提供了`draw`的方法，即暴露了`draw`的能力
-* `draw somethind`的四个必备要素
-  1. `A Bitmap to hold the pixels`
-  2. `a Canvas to host the draw call`
-  3. `a drawing primitive (e.g. Rect, Path, text, Bitmap)`
-  4. `a paint`
-
-### 相互转换
-
-1. `Bitmap` -> `Drawable`
-
-   ```kotlin
-   val bitmap = BitmapFactory.decodeResource(resources, R.drawable.takagi)
-   val bitmapDrawable = BitmapDrawable(resources, bitmap)
-   ```
-
-2. `Drwable` -> `Bitmap`
-
-   ```kotlin
-   val drawable = BitmapDrawable(resources, BitmapFactory.decodeResource(resources, R.drawable.takagi))
-               drawable.setBounds(200, 200, 500 ,500)
-   val bitmap = Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
-   val canvas = Canvas(bitmap)
-   drawable.draw(canvas)
-   ```
-
-3. View -> Bitmap
-
-   ```kotlin
-   val bitmap = Bitmap.createBitmap(textView?.width ?: 100, textView?.height ?: 100, Bitmap.Config.ARGB_8888)
-   val canvas = Canvas(bitmap)
-   textView?.draw(canvas)
-   ```
-
-
-***
-
-## CBWidget
-
-* 基本原理 -> 
-  * 将`WidgetProvider`注册为一个`BroadCastReciver`，接收各种广播通知尤其是`android.appwidget.action.APPWIDGET_UPDATE`
-  * 在初始化或者`update`的时候设置好各个`View`的点击事件，不过要通过`RemoteView`的`api`来设置，和传统的`View#setOnClickListener`有点不同
-* 使用过程 
-  * [Create a simple widget](https://developer.android.com/develop/ui/views/appwidgets)
-
-***
