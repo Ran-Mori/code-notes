@@ -634,6 +634,16 @@ startActivity(intent)
 
 ***
 
+## Video
+
+### SurfaceView
+
+* 是`View`的子类
+* `View`的绘制都是在主线程进行的，如果绘制任务比较复杂，就可以考虑使用`SurfaceView`
+* `SurfaceView`的绘制过程是发生在子线程的，使用双缓冲机制
+
+***
+
 ## ViewCoordinate
 
 ### 坐标
