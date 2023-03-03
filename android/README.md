@@ -104,11 +104,24 @@
 ### Canvas
 
 * 是什么 -> 提供了`draw`的方法，即暴露了`draw`的能力
+
 * `draw somethind`的四个必备要素
-  1. `A Bitmap to hold the pixels`
+  1. `A Bitmap to hold the pixels `
   2. `a Canvas to host the draw call`
   3. `a drawing primitive (e.g. Rect, Path, text, Bitmap)`
   4. `a paint`
+
+* 四个要素示例
+
+  ```kotlin
+  // Drawable -> Bitmap
+  val drawable = BitmapDrawable(resources, BitmapFactory.decodeResource(resources, R.drawable.takagi))
+  drawable.setBounds(200, 200, 1000 ,1000)
+  val bitmap = Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+  val canvas = Canvas(bitmap) //要素1 -> bitmap，要素2 -> canvas，要素3 -> drawable，要素4 -> 默认
+  drawable.draw(canvas)
+  imageView?.setImageDrawable(BitmapDrawable(resources, bitmap))
+  ```
 
 ### 相互转换
 
