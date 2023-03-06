@@ -169,6 +169,44 @@ fun dp2px(context: Context, dp: Int): Float =
 
 ***
 
+## CBAnimation
+
+### xml写动画和插值器
+
+* 动画
+
+  ```xml
+  <?xml version="1.0" encoding="utf-8"?>
+  <translate
+      xmlns:android="http://schemas.android.com/apk/res/android"
+      android:fromYDelta="0"
+      android:toYDelta="100"
+      android:duration="1000"
+      android:interpolator="@anim/cycler" />
+  ```
+
+* 插值器
+
+  ```xml
+  <?xml version="1.0"?>
+  <cycleInterpolator
+      xmlns:android="http://schemas.android.com/apk/res/android"
+      android:cycles="5"/>
+  ```
+
+* 以上动画的效果是 -> 在y方向上执行5此平移，达到上下shake的视觉效果
+
+### View#invalidate()
+
+*  可以理解成作用是`强制重绘，调用draw()`
+
+### View执行动画接口
+
+* `public void startAnimation(Animation animation)`
+* 最终动画执行在`View#applyLegacyAnimation()`方法内
+
+***
+
 ## CBApplicationSingleton
 
 ### 自定义Application
@@ -396,37 +434,6 @@ startActivity(intent)
 3. `context`中`start`和`stop`
    * `public @Nullable ComponentName startService(Intent service)`
    * `public boolean stopService(Intent name)`
-
-***
-
-## CBShakeAnimation
-
-### xml写动画和插值器
-
-* 动画
-
-  ```xml
-  <?xml version="1.0" encoding="utf-8"?>
-  <translate
-      xmlns:android="http://schemas.android.com/apk/res/android"
-      android:fromYDelta="0"
-      android:toYDelta="100"
-      android:duration="1000"
-      android:interpolator="@anim/cycler" />
-  ```
-
-* 插值器
-
-  ```xml
-  <?xml version="1.0"?>
-  <cycleInterpolator
-      xmlns:android="http://schemas.android.com/apk/res/android"
-      android:cycles="5"/>
-  ```
-
-### View执行动画接口
-
-* `public void startAnimation(Animation animation)`
 
 ***
 
