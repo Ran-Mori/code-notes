@@ -656,11 +656,36 @@ startActivity(intent)
 
 ## Video
 
+### Surface
+
+* `Handle onto a raw buffer that is being managed by the screen compositor.`
+* 继承了`Parcelable`，因此可以跨进程通信，在`WMS`中传递
+* 它持有了`NativeBuffer`的指针，这个`NativieBuffer`指的是用来保存当前窗口屏幕数据的一个`buffer`
+* `ViewRootImpl`持有了这个对象，即一颗`view tree`，一个`window`，共享一个`Surface`
+
+### SurfaceHolder
+
+* 充当`MVC`模式中的`C`，`Surface`是`M`，`SurfaceView`是`V`
+
 ### SurfaceView
 
+* `Provides a dedicated drawing surface embedded inside of a view hierarchy.`
 * 是`View`的子类
-* `View`的绘制都是在主线程进行的，如果绘制任务比较复杂，就可以考虑使用`SurfaceView`
-* `SurfaceView`的绘制过程是发生在子线程的，使用双缓冲机制
+* 不与`window`共享`surface`，而是自己持有一个`surface`
+* 为了解决与`window#surface`的重叠问题，`SurfaceView`是在`Z轴`的底部，通过让`window#surface`设置为透明而显示出来
+* `surface`绘制的线程可以自己定，可以不是主线程
+
+### TextureView
+
+* 继承自`View`，它的表现就像一个普通的`View`一样
+* 它没有自己的`Surface`，而是共享`ViewRootImpl`的`Surface`
+* 由于没有自己的`Surface`，它的理论性能比`SurfaceView`低
+* 显示的内容通过`SurfaceTexture`传递
+
+### SurfaceTexture
+
+* `Captures frames from an image stream as an OpenGL ES texture.`
+* 可以把`Surface`生成的图像流，转换为纹理`Texture`，供业务方进一步加工使用
 
 ***
 
