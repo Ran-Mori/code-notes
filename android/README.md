@@ -330,9 +330,7 @@ fun dp2px(context: Context, dp: Int): Float =
 
 ## CBGLSurfaceView
 
-### SurfaceView
-
-* 太复杂了，看不懂，先贴个链接 -> [Graphics architecture](https://source.android.com/docs/core/graphics/architecture)
+* 详见`Video`
 
 ***
 
@@ -655,6 +653,7 @@ startActivity(intent)
 
 ### SurfaceView
 
+* 太复杂了，看不懂，先贴个链接 -> [Graphics architecture](https://source.android.com/docs/core/graphics/architecture)
 * `Provides a dedicated drawing surface embedded inside of a view hierarchy.`
 * 是`View`的子类
 * 不与`window`共享`surface`，而是自己持有一个`surface`
