@@ -205,6 +205,12 @@ fun dp2px(context: Context, dp: Int): Float =
 * `public void startAnimation(Animation animation)`
 * 最终动画执行在`View#applyLegacyAnimation()`方法内
 
+### 动画与onDraw()方法的关系
+
+* Animations in Android are a way to change the state of a View over time, typically by animating specific properties such as position, size, or opacity.
+* When an animation is running, the View's drawing method is called on each frame of the animation to update the View's appearance based on the current state of the animation. 
+* However, even when an animation is not running, the View's drawing method may still be called for other reasons, such as when the View is invalidated or when the system needs to redraw the View for some other reason.
+
 ***
 
 ## CBApplicationSingleton
