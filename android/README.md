@@ -930,18 +930,58 @@ startActivity(intent)
 
 * `ViewRootImpl#performTraversals()`
 
-```java
-private void performTraversals() {
-  // do measure
-  measureHierarchy(host, lp, mView.getContext().getResources(),
-                    desiredWindowWidth, desiredWindowHeight);
-  // do layout
-  performLayout(lp, mWidth, mHeight);
-  
-  // do draw
-  if (!performDraw())
-}
-```
+  ```java
+  private void performTraversals() {
+    // do measure
+    measureHierarchy(host, lp, mView.getContext().getResources(),
+                      desiredWindowWidth, desiredWindowHeight);
+    // do layout
+    performLayout(lp, mWidth, mHeight);
+    
+    // do draw
+    if (!performDraw())
+  }
+  ```
+
+### View#invalidate()
+
+* 标记为`PFLAG_INVALIDATED`和`~PFLAG_DRAWING_CACHE_VALID`
+
+  ```java
+  void invalidateInternal() {
+    // 置换标记位
+    mPrivateFlags |= PFLAG_INVALIDATED;
+  	mPrivateFlags &= ~PFLAG_DRAWING_CACHE_VALID;
+  }
+  ```
+
+* 下一次系统自动执行`ViewRootImpl#performTraversals()`时，会通过变量控制，达到只执行`performDraw()`而不执行`measureHierarchy()、performLayout()`的效果
+
+### View#requestLayout()
+
+* 标记为`PFLAG_FORCE_LAYOUT`和`PFLAG_INVALIDATED`。向上递归
+
+  ```java
+  public void requestLayout() {
+    if (viewRoot != null && viewRoot.isInLayout()) {
+      if (!viewRoot.requestLayoutDuringLayout(this)) {
+        return; // 防止多次requestLayout
+      }
+    }
+  	// 置标记位
+    mPrivateFlags |= PFLAG_FORCE_LAYOUT;
+    mPrivateFlags |= PFLAG_INVALIDATED;
+    
+    if (mParent != null && !mParent.isLayoutRequested()) {
+      //递归向上调用做标记
+      mParent.requestLayout();
+    }
+  }
+  ```
+
+* the view's requestLayout method almost does nothing except puts the flag to be 'invalidated', and the system will automatically handle it.
+
+* 下一次系统自动执行`ViewRootImpl#performTraversals()`时，`measureHierarchy()、performLayout()、performDraw()`全都会执行
 
 ***
 
@@ -1054,16 +1094,6 @@ private void performTraversals() {
 ### View#scrollTo
 
 * 不调用`measure、layout`，只调用`draw`，不改变自身而改变`children`
-
-### invalidate
-
-* 分为`View#invalidate()`和`View#postInvadiate()`
-* 不调用`measure、layout`，只调用`draw`
-
-### View#requestLayout
-
-* 会传递到`ViewRootImpl`
-* `measure、layout、draw`都会调用到，成本高
 
 ***
 
