@@ -545,10 +545,6 @@ startActivity(intent)
 
 ### [笔记链接](https://github.com/IzumiSakai-zy/various-kinds-learning/blob/master/daily-android.md)
 
-## EventDispatch
-
-### [笔记链接](https://github.com/IzumiSakai-zy/various-kinds-learning/blob/master/android-develop-explore-art.md)
-
 ## Fresco
 
 ### [笔记链接](https://github.com/IzumiSakai-zy/various-kinds-learning/blob/master/daily-android.md)
@@ -926,6 +922,12 @@ startActivity(intent)
 2. 非叶子节点
    1. 直接调用`draw()`方法，先通过`draw()`方法调`onDraw()`把自己draw出来，接着调用`dispatchDraw()`，复写的`dispatchDraw`会通过`drawChild()`最后调用到`child.draw()`把children给draw出来
 
+### onXXX()与XXX()方法
+
+* `onMeasure()、onLayout()、onDraw()` -> 代表这个View如何实现`measure、layout、draw`
+* `measure()、layout()、draw()` -> 手动强项执行(或者系统某处需调用)`measure、layout、draw`
+* 执行`draw()`前请确保`measure()和layout()`执行过
+
 ### where to start
 
 * `ViewRootImpl#performTraversals()`
@@ -982,6 +984,180 @@ startActivity(intent)
 * the view's requestLayout method almost does nothing except puts the flag to be 'invalidated', and the system will automatically handle it.
 
 * 下一次系统自动执行`ViewRootImpl#performTraversals()`时，`measureHierarchy()、performLayout()、performDraw()`全都会执行
+
+***
+
+## MotionEventDispatch
+
+### Motion相关
+
+* `getX()、getY()`：触摸位置相对于当前View的位置
+* `getRawX()、getRawY()`：触摸位置相对于物理屏幕左上角的位置
+* `TouchSlop`：被认为是滑动的最小距离。单位是`dp`
+* `VelocityTracker`：滑动速度相关
+* `GestureDetector`：手势检测相关
+
+### 事件机制三方法
+
+1. `View#dispatchTouchEvent(MotionEvent event)`：Pass the touch screen motion event down to the target view, or this view if it is the target.
+
+   ```kotlin
+   //以下所有方法都是View类里面的
+   fun dispatchTouchEvent(val event: MotionEvent) {
+     if(event.isTargetAccessibilityFocus()) {
+       //处理Talkback模式，这个阶段不会消费事件
+     }
+     //一个变量来记录是否消费事件
+     var result: Boolean = false 
+     //这货直接响应
+     mInputEventConsistencyVerifier?.onTouchEvent(event, 0)
+     //这做了一层安全判断，但是大多情况下返回都是true，因此都会执行里面的代码
+     if (onFilterTouchEventForSecurity(event)) { 
+       //关键点一：首先尝试让onTouchListener消费事件
+       if (mListenerInfo?.mOnTouchListener.onTouch(this, event)) {
+         result = true
+       }
+       //关键点二：如果没有onTouchListener，则让onTouchEvent消费事件
+       if (!result && onTouchEvent(event)) {
+         result = true
+       }
+     }
+     //返回最终是否消费掉事件
+     return result
+   }
+   
+   //设置onTouchListener接口
+   fun setOnTouchListener(l:OnTouchListener) {
+     getListenerInfo().mOnTouchListener = l;
+   }
+   
+   //onTouchEvent是一个已经有默认实现的方法，而且非常复杂
+   open fun onTouchEvent(event: MotionEvent): Boolean {
+     //先存个变量看这个View是否可以点击
+     val clickable = boolean clickable = ((viewFlags & CLICKABLE) == CLICKABLE
+                   || (viewFlags & LONG_CLICKABLE) == LONG_CLICKABLE)
+                   || (viewFlags & CONTEXT_CLICKABLE) == CONTEXT_CLICKABLE
+     //用户设置的touchDelegate优先级高
+     if (mTouchDelegate?.onTouchEvent(event)) {
+       return true;
+     }
+     //真正开始处理点击的地方
+     if (clickable || (viewFlags & TOOLTIP) == TOOLTIP) {
+       switch (action) {
+         //点击肯定是ACTION_UP的时候
+         case MotionEvent.ACTION_UP:
+         	//如果不可点击，一切都清空
+         	if (!clickable) {
+             removeTapCallback();
+             removeLongPressCallback();
+             mInContextButtonPress = false;
+             mHasPerformedLongPress = false;
+             mIgnoreNextUpEvent = false;
+             break;
+           }
+         	//这个方法内部有调用onClickListener()
+         	performClickInternal()
+       }
+       //只要进到这来就肯定被消费
+       return true
+     }
+     return false
+   }
+   
+   //真正调点击listener
+   fun performClick(): Boolean {
+     val result: Boolean = false
+     final ListenerInfo li = mListenerInfo;
+     if (li != null && li.mOnClickListener != null) {
+       playSoundEffect(SoundEffectConstants.CLICK)
+       //关键代码
+       li.mOnClickListener.onClick(this)
+       result = true
+     } else {
+       result = false
+     }
+     return result;
+   }
+   ```
+
+   ```kotlin
+   //ViewGroup版本
+   fun dispatchTouchEvent(val ev:MotionEvent){
+     var consume = false
+     if (allowIntercept() && onInterceptTouchEvent(ev)) {
+       consume = onTouchEvent(ev)
+     } else {
+       comsume = child.dispatchTouchEvent(ev)
+     }
+     return consume;
+   }
+   ```
+
+2. `View#onTouchEvent(MotionEvent event)`：Implement this method to handle touch screen motion events.
+
+3. `ViewGroup#onInterceptTouchEvent(MotionEvent ev)`：This allows you to watch events as they are dispatched to your children, and take ownership of the current gesture at any point.
+
+   ```java
+   // 是否允许ViewGroup对MotionEvent进行拦截
+   public void requestDisallowInterceptTouchEvent(boolean disallowIntercept) {
+     if (disallowIntercept) {
+         mGroupFlags |= FLAG_DISALLOW_INTERCEPT;
+     } else {
+         mGroupFlags &= ~FLAG_DISALLOW_INTERCEPT;
+     }
+   }
+   ```
+
+### 一些结论
+
+* 事件序列 - 从`ACTION_DOWN`开始，到`ACTION_UP`结束，中间有很多的`ACTION_MOVE`
+* 一个事件序列正常情况下只能被一个`View`拦截并消耗
+* `View`如果要处理事件，就必修消耗`ACTION_DOWN`事件，否则就向上抛；`View`一旦消耗`ACTION_DOWN`事件，即消耗整个事件
+* `ViewGroup`默认不拦截任何事件，它的`onInterceptTouchEvent`方法默认返回false
+
+### 分发流程
+
+* `activity` -> `root view` -> `child view`
+
+  ```bash
+  MainActivity.dispatchTouchEvent call start, action: DOWN
+  ConstraintLayoutA.dispatchTouchEvent call start, action: DOWN
+  ConstraintLayoutA.onInterceptTouchEvent call start, action: DOWN
+  ConstraintLayoutA.onInterceptTouchEvent call end, result: false, action: DOWN
+  ConstraintLayoutB.dispatchTouchEvent call start, action: DOWN
+  ConstraintLayoutB.onInterceptTouchEvent call start, action: DOWN
+  ConstraintLayoutB.onInterceptTouchEvent call end, result: false, action: DOWN
+  ButtonA.dispatchTouchEvent call start, action: DOWN
+  ButtonA.OnTouchListener call start, action: DOWN
+  ButtonA.OnTouchListener call end, result = false, action: DOWN
+  ButtonA.onTouchEvent call start, action: DOWN
+  ButtonA.onTouchEvent call end, result: false, action: DOWN
+  ButtonA.dispatchTouchEvent call end, result: false, action: DOWN
+  ConstraintLayoutB.OnTouchListener call start, action: DOWN
+  ConstraintLayoutB.OnTouchListener call end, result = false, action: DOWN
+  ConstraintLayoutB.onTouchEvent call start, action: DOWN
+  ConstraintLayoutB.onTouchEvent call end, result: false, action: DOWN
+  ConstraintLayoutB.dispatchTouchEvent call end, result: false, action: DOWN
+  ConstraintLayoutA.OnTouchListener call start, action: DOWN
+  ConstraintLayoutA.OnTouchListener call end, result = false, action: DOWN
+  ConstraintLayoutA.onTouchEvent call start, action: DOWN
+  ConstraintLayoutA.onTouchEvent call end, result: false, action: DOWN
+  ConstraintLayoutA.dispatchTouchEvent call end, result: false, action: DOWN
+  MainActivity.onTouchEvent call start, action: DOWN
+  MainActivity.onTouchEvent call end, result: false, action: DOWN
+  MainActivity.dispatchTouchEvent call end, result: false, action: DOWN
+  ```
+
+* 优先级
+
+  1. `setOnTouchListener()`
+  2. 自己重写的`onTouchEvent()`，但一般没人会去重写它
+  3. `onTouchEvent()`内调用的`setOnClickListener()`
+
+* onTouch和onClick
+
+  1. `onTouchListener()`内有两个参数`View、MotionEvent`，对它的自定义度更高
+  2. `onClickListener()`内只有一个参数`View`，对它的自定义度更低
 
 ***
 

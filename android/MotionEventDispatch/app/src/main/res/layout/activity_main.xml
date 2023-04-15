@@ -7,7 +7,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".MainActivity">
 
-    <com.example.eventdispatch.view.ConstraintLayoutA
+    <com.example.dispatch.view.ConstraintLayoutA
         android:id="@+id/view_group_a"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -17,7 +17,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-            <com.example.eventdispatch.view.ConstraintLayoutB
+            <com.example.dispatch.view.ConstraintLayoutB
                 android:id="@+id/view_group_b"
                 android:layout_width="500dp"
                 android:layout_height="500dp"
@@ -27,7 +27,7 @@
                 app:layout_constraintStart_toStartOf="@id/view_group_a"
                 app:layout_constraintEnd_toEndOf="@id/view_group_a">
 
-                <com.example.eventdispatch.view.ButtonA
+                <com.example.dispatch.view.ButtonA
                     android:background="#00FF00"
                     android:id="@+id/button"
                     android:layout_width="200dp"
@@ -36,6 +36,6 @@
                     app:layout_constraintBottom_toBottomOf="@id/view_group_b"
                     app:layout_constraintStart_toStartOf="@id/view_group_b"
                     app:layout_constraintEnd_toEndOf="@id/view_group_b"/>
-            </com.example.eventdispatch.view.ConstraintLayoutB>
-    </com.example.eventdispatch.view.ConstraintLayoutA>
+            </com.example.dispatch.view.ConstraintLayoutB>
+    </com.example.dispatch.view.ConstraintLayoutA>
 </androidx.constraintlayout.widget.ConstraintLayout>
