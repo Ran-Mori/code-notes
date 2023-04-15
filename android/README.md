@@ -1002,7 +1002,7 @@ startActivity(intent)
 1. `View#dispatchTouchEvent(MotionEvent event)`：Pass the touch screen motion event down to the target view, or this view if it is the target.
 
    ```kotlin
-   //以下所有方法都是View类里面的
+   //View
    fun dispatchTouchEvent(val event: MotionEvent) {
      if(event.isTargetAccessibilityFocus()) {
        //处理Talkback模式，这个阶段不会消费事件
@@ -1151,13 +1151,211 @@ startActivity(intent)
 * 优先级
 
   1. `setOnTouchListener()`
-  2. 自己重写的`onTouchEvent()`，但一般没人会去重写它
+  2. 重写的`onTouchEvent()`，但一般没人会去重写它
   3. `onTouchEvent()`内调用的`setOnClickListener()`
 
 * onTouch和onClick
 
   1. `onTouchListener()`内有两个参数`View、MotionEvent`，对它的自定义度更高
   2. `onClickListener()`内只有一个参数`View`，对它的自定义度更低
+
+### 分发机制实现
+
+* ViewGoup将down事件给了某一个View，如何确保后续事件都给这个View
+
+  ```java
+  //ViewGroup
+  public boolean dispatchTouchEvent(MotionEvent ev) {
+    // 处理最开始的down事件
+    if (actionMasked == MotionEvent.ACTION_DOWN) {
+      for (int i = childrenCount - 1; i >= 0; i--) {
+        final View child = getAndVerifyPreorderedView(i);
+        // 这个child消费了事件
+        if (dispatchTransformedTouchEvent(child)) {
+          // 调用addTouchTarget()方法
+          addTouchTarget(child, idBitsToAssign);
+        }
+      }
+    }
+    
+    // Dispatch to touch targets.
+    if (mFirstTouchTarget == null) {
+      // ...
+    } else {
+      TouchTarget target = mFirstTouchTarget;
+      while (target != null) {
+        // 将事件直接分发给target对应的child
+        if (dispatchTransformedTouchEvent(target.child)) {
+            handled = true;
+        }
+      }
+    }
+  }
+  
+  private TouchTarget addTouchTarget(View child, int pointerIdBits) {
+    final TouchTarget target = TouchTarget.obtain(child, pointerIdBits);
+    target.next = mFirstTouchTarget;
+    // 将child包成了TouchTarget，赋值给mFirstTouchTarget
+    mFirstTouchTarget = target;
+    return target;
+  }
+  ```
+
+* 当ViewGroup的`onTouchEvent()`已消费了down事件，如何确保后续事件都由`onTouchEvent()`消费
+
+  ```java
+  //ViewGroup
+  public boolean dispatchTouchEvent(MotionEvent ev) {
+    if (actionMasked == MotionEvent.ACTION_DOWN || mFirstTouchTarget != null) {
+      //...
+    } else {
+        // There are no touch targets and this action is not an initial down
+        // so this view group continues to intercept touches.
+        intercepted = true;
+    }
+  }
+  ```
+
+### 动作实现
+
+* 单击
+
+  1. `setOnClickListener()`置`CLICKABLE` flag生效
+
+     ```java
+     //View
+     public void setOnClickListener(@Nullable OnClickListener l) {
+         if (!isClickable()) { setClickable(true);}
+     }
+     
+     public boolean isClickable() {
+         return (mViewFlags & CLICKABLE) == CLICKABLE;
+     }
+     
+     public void setClickable(boolean clickable) {
+         setFlags(clickable ? CLICKABLE : 0, CLICKABLE);
+     }
+     ```
+
+  2. `onTouchEvent()`消费所有事件
+
+     ```java
+     public boolean onTouchEvent(MotionEvent event) {
+       // 只要setOnClickListener() 调用了，这个clickable变量就肯定是true
+       final boolean clickable = (viewFlags & CLICKABLE) == CLICKABLE;
+     	
+      	if (clickable || (viewFlags & TOOLTIP) == TOOLTIP) {
+         switch (action) {
+           case MotionEvent.ACTION_UP:
+             // 当PFLAG_PRESSED flag生效时
+             if ((mPrivateFlags & PFLAG_PRESSED) != 0) {
+               // 执行点击事件
+               performClickInternal();
+             }
+           case MotionEvent.ACTION_DOWN:
+             // 将PFLAG_PRESSED flag置为生效
+             setPressed(true, x, y);
+             break;
+           case MotionEvent.ACTION_MOVE:
+             if (!pointInView(x, y, touchSlop)) {
+               // 当已经消费down，但move移出view时，置PFLAG_PRESSED flag为不生效
+               setPressed(false);
+             }
+         }
+         return true; //直接返回消费
+       }
+       return false;
+     }
+                                  
+     public void setPressed(boolean pressed) {
+       // 置PFLAG_PRESSED flag
+       if (pressed) {
+           mPrivateFlags |= PFLAG_PRESSED;
+       } else {
+           mPrivateFlags &= ~PFLAG_PRESSED;
+       }
+       dispatchSetPressed(pressed);
+     }
+
+* 长按
+
+  1. `setOnLongClickListener()`置`LONG_CLICKABLE`为生效
+
+     ```java
+     public void setOnLongClickListener(@Nullable OnLongClickListener l) {
+         if (!isLongClickable()) { setLongClickable(true); }
+     }
+     public void setLongClickable(boolean longClickable) {
+         setFlags(longClickable ? LONG_CLICKABLE : 0, LONG_CLICKABLE);
+     }
+     ```
+
+  2. `onTouchEvent()`消费所有事件
+
+     ```java
+     // 是否已执行长按的临时变量
+     private boolean mHasPerformedLongPress;
+     // 实现长按的可能会被postDelay()的Runnable
+     private CheckForLongPress mPendingCheckForLongPress;
+     
+     public boolean onTouchEvent(MotionEvent event) {
+       // 只要setOnLongClickListener() 调用了，这个clickable变量就肯定是true
+       final boolean clickable = (viewFlags & LONG_CLICKABLE) == LONG_CLICKABLE;
+     	
+      	if (clickable) {
+         switch (action) {
+           case MotionEvent.ACTION_UP:
+             // 当PFLAG_PRESSED flag生效时
+             if ((mPrivateFlags & PFLAG_PRESSED) != 0) {
+               // check是否执行了长按
+               if (!mHasPerformedLongPress) {
+                 // 执行单击时将长按的Runnable给消除
+                 removeLongPressCallback();
+                 // 执行单击
+                 performClickInternal();
+               }
+             }
+           case MotionEvent.ACTION_DOWN:
+             // 直接尝试执行长按操作, 参数delay是400ms
+             checkForLongClick(ViewConfiguration.getLongPressTimeout());
+             break;
+           case MotionEvent.ACTION_MOVE:
+             if (!pointInView(x, y, touchSlop)) {
+               // 当已经消费down，但move移出view时，置PFLAG_PRESSED flag为不生效
+               setPressed(false);
+             }
+         }
+         return true; //直接返回消费
+       }
+       return false;
+     }
+     
+     private void checkForLongClick(long delay, float x, float y, int classification) {
+       // 先check LONG_CLICKABLE flag
+       if ((mViewFlags & LONG_CLICKABLE) == LONG_CLICKABLE) {
+         // 置临时变量为false
+         mHasPerformedLongPress = false;
+         if (mPendingCheckForLongPress == null) {
+     			// 构造一个待post的Runnable
+           mPendingCheckForLongPress = new CheckForLongPress();
+         }
+         // 直接往handler里面post
+         postDelayed(mPendingCheckForLongPress, delay);
+       }
+     }
+     
+     // 一个用来执行长按的Runnable
+     private final class CheckForLongPress implements Runnable {
+       @Override
+       public void run() {
+         // 真正长按执行的地方
+         if (performLongClick(mX, mY)) {
+           // 置临时变量为true
+           mHasPerformedLongPress = true;
+         }
+       }
+     }
+     ```
 
 ***
 

@@ -15,35 +15,35 @@ class ConstraintLayoutB(context: Context, attrs: AttributeSet?): ConstraintLayou
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         setOnTouchListener { _, event ->
-            Log.e(Single.LOG_TAG, "ConstraintLayoutB.OnTouchListener call start, action: ${event?.action?.getMotionEventString()}")
+            Log.e(Single.DISPATCH_LOG_TAG, "ConstraintLayoutB.OnTouchListener call start, action: ${event?.action?.getMotionEventString()}")
 
             //consume this event?
             val result = false
 //            val result = true
-            Log.e(Single.LOG_TAG, "ConstraintLayoutB.OnTouchListener call end, result = ${result}, action: ${event?.action?.getMotionEventString()}")
+            Log.e(Single.DISPATCH_LOG_TAG, "ConstraintLayoutB.OnTouchListener call end, result = ${result}, action: ${event?.action?.getMotionEventString()}")
 
             return@setOnTouchListener result
         }
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
-        Log.e(Single.LOG_TAG, "ConstraintLayoutB.onInterceptTouchEvent call start, action: ${ev?.action?.getMotionEventString()}")
+        Log.e(Single.DISPATCH_LOG_TAG, "ConstraintLayoutB.onInterceptTouchEvent call start, action: ${ev?.action?.getMotionEventString()}")
         val result = super.onInterceptTouchEvent(ev)
-        Log.e(Single.LOG_TAG, "ConstraintLayoutB.onInterceptTouchEvent call end, result: $result, action: ${ev?.action?.getMotionEventString()}")
+        Log.e(Single.DISPATCH_LOG_TAG, "ConstraintLayoutB.onInterceptTouchEvent call end, result: $result, action: ${ev?.action?.getMotionEventString()}")
         return result
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
-        Log.e(Single.LOG_TAG, "ConstraintLayoutB.dispatchTouchEvent call start, action: ${ev?.action?.getMotionEventString()}")
+        Log.e(Single.DISPATCH_LOG_TAG, "ConstraintLayoutB.dispatchTouchEvent call start, action: ${ev?.action?.getMotionEventString()}")
         val result = super.dispatchTouchEvent(ev)
-        Log.e(Single.LOG_TAG, "ConstraintLayoutB.dispatchTouchEvent call end, result: $result, action: ${ev?.action?.getMotionEventString()}")
+        Log.e(Single.DISPATCH_LOG_TAG, "ConstraintLayoutB.dispatchTouchEvent call end, result: $result, action: ${ev?.action?.getMotionEventString()}")
         return result
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-        Log.e(Single.LOG_TAG, "ConstraintLayoutB.onTouchEvent call start, action: ${event?.action?.getMotionEventString()}")
+        Log.e(Single.DISPATCH_LOG_TAG, "ConstraintLayoutB.onTouchEvent call start, action: ${event?.action?.getMotionEventString()}")
         val result = super.onTouchEvent(event)
-        Log.e(Single.LOG_TAG, "ConstraintLayoutB.onTouchEvent call end, result: $result, action: ${event?.action?.getMotionEventString()}")
+        Log.e(Single.DISPATCH_LOG_TAG, "ConstraintLayoutB.onTouchEvent call end, result: $result, action: ${event?.action?.getMotionEventString()}")
         return result
     }
 }

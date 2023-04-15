@@ -14,16 +14,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
-        Log.e(Single.LOG_TAG, "MainActivity.dispatchTouchEvent call start, action: ${ev?.action?.getMotionEventString()}")
+        Log.e(Single.DISPATCH_LOG_TAG, "MainActivity.dispatchTouchEvent call start, action: ${ev?.action?.getMotionEventString()}")
         val result = super.dispatchTouchEvent(ev)
-        Log.e(Single.LOG_TAG, "MainActivity.dispatchTouchEvent call end, result: $result, action: ${ev?.action?.getMotionEventString()}")
+        Log.e(Single.DISPATCH_LOG_TAG, "MainActivity.dispatchTouchEvent call end, result: $result, action: ${ev?.action?.getMotionEventString()}")
         return result
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-        Log.e(Single.LOG_TAG, "MainActivity.onTouchEvent call start, action: ${event?.action?.getMotionEventString()}")
+        Log.e(Single.DISPATCH_LOG_TAG, "MainActivity.onTouchEvent call start, action: ${event?.action?.getMotionEventString()}")
         val result = super.onTouchEvent(event)
-        Log.e(Single.LOG_TAG, "MainActivity.onTouchEvent call end, result: $result, action: ${event?.action?.getMotionEventString()}")
+        Log.e(Single.DISPATCH_LOG_TAG, "MainActivity.onTouchEvent call end, result: $result, action: ${event?.action?.getMotionEventString()}")
         return result
     }
 }
