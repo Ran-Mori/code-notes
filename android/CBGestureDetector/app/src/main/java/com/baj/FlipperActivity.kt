@@ -9,6 +9,7 @@ import android.os.Vibrator
 import android.graphics.Color
 import android.view.animation.Animation
 import android.os.Bundle
+import android.util.Log
 import android.view.animation.TranslateAnimation
 import android.view.animation.OvershootInterpolator
 import android.view.Gravity
@@ -97,6 +98,7 @@ class FlipperActivity : Activity() {
     private val gestureListener = object : GestureDetector.OnGestureListener {
 
         override fun onDown(e: MotionEvent): Boolean {
+            Log.d("IzumiSakai", "FlipperActivity OnGestureListener onDown call")
             return false
         }
 
@@ -104,6 +106,7 @@ class FlipperActivity : Activity() {
             event1: MotionEvent, event2: MotionEvent,
             velocityX: Float, velocityY: Float
         ): Boolean {
+            Log.d("IzumiSakai", "FlipperActivity OnGestureListener onFling call")
             if (isDragMode) return false
             val ev1x = event1.x
             val ev1y = event1.y
@@ -158,6 +161,7 @@ class FlipperActivity : Activity() {
         }
 
         override fun onLongPress(e: MotionEvent) {
+            Log.d("IzumiSakai", "FlipperActivity OnGestureListener onLongPress call")
             vibrator!!.vibrate(200)
             flipper!!.scrollTo(0, 0)
             isDragMode = !isDragMode
@@ -168,28 +172,35 @@ class FlipperActivity : Activity() {
             e1: MotionEvent, e2: MotionEvent,
             distanceX: Float, distanceY: Float
         ): Boolean {
+            Log.d("IzumiSakai", "FlipperActivity OnGestureListener onScroll call")
             if (isDragMode) flipper!!.scrollBy(distanceX.toInt(), distanceY.toInt())
             return false
         }
 
-        override fun onShowPress(e: MotionEvent) {}
+        override fun onShowPress(e: MotionEvent) {
+            Log.d("IzumiSakai", "FlipperActivity OnGestureListener onShowPress call")
+        }
 
         override fun onSingleTapUp(e: MotionEvent): Boolean {
+            Log.d("IzumiSakai", "FlipperActivity OnGestureListener onSingleTapUp call")
             return false
         }
     }
 
     private val doubleTapListener = object : GestureDetector.OnDoubleTapListener {
         override fun onDoubleTap(e: MotionEvent): Boolean {
+            Log.d("IzumiSakai", "FlipperActivity OnDoubleTapListener onDoubleTap call")
             flipper!!.scrollTo(0, 0)
             return false
         }
 
         override fun onDoubleTapEvent(e: MotionEvent): Boolean {
+            Log.d("IzumiSakai", "FlipperActivity OnDoubleTapListener onDoubleTapEvent call")
             return false
         }
 
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            Log.d("IzumiSakai", "FlipperActivity OnDoubleTapListener onSingleTapConfirmed call")
             return false
         }
     }
@@ -242,6 +253,9 @@ class FlipperActivity : Activity() {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        return gesturedetector!!.onTouchEvent(event)
+        Log.d("IzumiSakai", "FlipperActivity onTouchEvent start, action = ${event.action.getMotionEventString()}")
+        val result = gesturedetector?.onTouchEvent(event) ?: super.onTouchEvent(event)
+        Log.d("IzumiSakai", "FlipperActivity onTouchEvent end, result = ${result}, action = ${event.action.getMotionEventString()}")
+        return result
     }
 }
