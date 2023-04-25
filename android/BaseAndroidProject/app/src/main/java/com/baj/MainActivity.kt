@@ -18,7 +18,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        textView = findViewById(R.id.text_vew)
+        textView = findViewById(R.id.text_view)
 
         textView?.setOnClickListener {
             Log.d(TAG, "text view onClick")
