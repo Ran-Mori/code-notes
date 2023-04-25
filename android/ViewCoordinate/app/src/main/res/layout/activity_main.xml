@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<com.baj.SelfDefineFrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -25,7 +25,7 @@
         android:layout_gravity="center_horizontal" />
 
     <com.baj.SelfDefineTextView
-        android:id="@+id/text_vew"
+        android:id="@+id/text_view"
         android:layout_width="300dp"
         android:layout_height="200dp"
         android:background="#FF0000"
@@ -35,4 +35,4 @@
         android:gravity="center"
         android:layout_gravity="center_horizontal|top" />
 
-</FrameLayout>
+</com.baj.SelfDefineFrameLayout>

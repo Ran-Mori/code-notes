@@ -784,15 +784,18 @@ startActivity(intent)
 
 ## ConstrainLayout
 
-* layout_constraintVertical_bias
-  * 计算公式: `bias = layout_constraintTop_toTopOf / (layout_constraintBottom_toBottomOf + layout_constraintBottom_toBottomOf)`
-  * 默认值是0.5，即此时`layout_constraintTop_toTopOf` = `layout_constraintBottom_toBottomOf`
-* layout_constraintVertical_chainStyle
-  * 设置在什么地方: on the first element of a chain
-  * behavior
-    1. spread - 默认值，全部平分
-    2. spread_inside - 第一个`layout_constraintTop_toTopOf`和最后一个`layout_constraintBottom_toBottomOf` 为零，其余平分
-    3. packed - 第一个`layout_constraintTop_toTopOf`和最后一个`layout_constraintBottom_toBottomOf` 平均，其余为零
+### bias
+
+* 计算公式: `bias = layout_constraintTop_toTopOf / (layout_constraintBottom_toBottomOf + layout_constraintBottom_toBottomOf)`
+* 默认值是0.5，即此时`layout_constraintTop_toTopOf` = `layout_constraintBottom_toBottomOf`
+
+### chainStyle
+
+* 设置在什么地方: on the first element of a chain
+* behavior
+  1. spread - 默认值，全部平分
+  2. spread_inside - 第一个`layout_constraintTop_toTopOf`和最后一个`layout_constraintBottom_toBottomOf` 为零，其余平分
+  3. packed - 第一个`layout_constraintTop_toTopOf`和最后一个`layout_constraintBottom_toBottomOf` 平均，其余为零
 
 ***
 
@@ -1637,6 +1640,18 @@ startActivity(intent)
 * `ScrollView#scrollTo()`和`ScrollView#scrollBy()`
 * `scrollX、scrollY`
 
+### View#mScrollY
+
+* 计算公式: 屏幕top边缘的纵坐标(一般是0) - view的top边缘的纵坐标(一般为负数)
+* 所以手向上滑动，下面的内容展示出来，这时的`mScrollY`是正数且越来越大
+
+### View#scrollTo(int, int)
+
+* 当一个View设置`mScrollX/mScrollY`后，会对`children`重新进行`draw`但不会重新进行`measure、layout`
+* 这个View本身的宽高、布局、位置全部都不变，只有`children`才会变
+* `scroll()`不改变View本身的大小，不改变本身的`backgroundDrawable`，它唯一改变的是`children`的位置，且不重新测量和布局
+* 设置后重新调用`requestLayout`会使`mScrollX/mScrollY`失效
+
 ***
 
 ## SelfDefineView
@@ -1710,23 +1725,15 @@ startActivity(intent)
 
 ### 坐标
 
-* `left, top, right, bottom, elevation, translateX, translateY, translateZ, x, y z `
+* `left, top, right, bottom, elevation` - The distance in pixels from the xxx edge of this view's parent
+* `translateX, translateY, translateZ` - The x/y/z location of this view relative to its left/top/elevation position
+* `x/y/z = mLeft/mTop/elevation + translationX/translationY/translationZ` - The visual x/y/z position of this view, in pixels
 
-### translate
+### translate value
 
 * 设置`translate`后只重新`draw`，不会重新进行`measure, layout`
 * 是一种低代价改变`View`位置的参数，因为不用`measure、layout`，常用来做动画
 * 设置后重新调用`requestLayout`依然不会使`translate`失效
-
-### scroll
-
-* 当一个View设置`mScrollX/mScrollY`后，会对`children`重新进行`draw`但不会重新进行`measure、layout`
-* `scroll`不改变View本身的大小，不改变本身的`backgroundDrawable`，它唯一改变的是`children`的位置，且不重新测量和布局
-* 设置后重新调用`requestLayout`会使`mScrollX/mScrollY`失效
-
-### View#scrollTo
-
-* 不调用`measure、layout`，只调用`draw`，不改变自身而改变`children`
 
 ***
 

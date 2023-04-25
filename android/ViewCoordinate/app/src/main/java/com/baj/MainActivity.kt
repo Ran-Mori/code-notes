@@ -20,16 +20,24 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        textView = findViewById(R.id.text_vew)
+        textView = findViewById(R.id.text_view)
 
         textView?.translationY =
             TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 300F, applicationContext.resources.displayMetrics)
 
+        var i = 0
+
         textView?.setOnClickListener {
-            it.scrollTo(it.scrollX, it.scrollY + 100)
 //            it.invalidate()
 //            it.postInvalidate()
 //            it.requestLayout()
+            if (i <= 5) {
+                it.scrollBy(0, -20)
+                i++
+            } else {
+                it.requestLayout()
+            }
+
             printCoordinate(it)
         }
     }
@@ -47,5 +55,7 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "x = ${view.x}")
         Log.d(TAG, "y = ${view.y}")
         Log.d(TAG, "z = ${view.z}")
+        Log.d(TAG, "mScrollX = ${view.scrollX}")
+        Log.d(TAG, "mScrollY = ${view.scrollY}")
     }
 }
