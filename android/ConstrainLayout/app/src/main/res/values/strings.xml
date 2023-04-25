@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">ConstrainLayout</string>
+    <string name="text_view">text_view</string>
+</resources>
