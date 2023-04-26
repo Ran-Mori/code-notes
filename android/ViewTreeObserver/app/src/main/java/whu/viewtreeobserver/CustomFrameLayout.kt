@@ -1,4 +1,4 @@
-package whu.viewonpredraw
+package whu.viewtreeobserver
 
 import android.content.Context
 import android.util.AttributeSet
