@@ -801,7 +801,163 @@ startActivity(intent)
 
 ## Coroutines
 
-* 代码啥都没有，先放这儿吧
+### 官方文档
+
+* [coroutines-guide](https://github.com/Kotlin/kotlinx.coroutines/blob/master/docs/topics/coroutines-guide.md)
+
+### 是什么
+
+* Coroutines are computations that run on top of threads and can be suspended. When a coroutine is "suspended", the corresponding computation is paused, removed from the thread, and stored in memory. Meanwhile, the thread is free to be occupied with other activities. 
+
+### 执行顺序
+
+* 示例代码
+
+  ```kotlin
+  private val scope by lazy { CoroutineScope(EmptyCoroutineContext) }
+  
+  private suspend fun testBasic() { // line 3
+      scope.launch(Dispatchers.IO) { // line 4
+          delay(1000L) // line 5
+          Log.d(TAG, "World!") // line 6
+      } // line 7
+      Log.d(TAG, "Hello") // line 8
+  }
+  
+  public suspend fun delay(timeMillis: Long)
+  ```
+
+* 顺序解析
+
+  1. line 4 和 line 8是并发执行的，因为 line 2新启动了一个协程，新的协程和其他代码块之间是并发的
+  2. line 5 和 line 6是串行的，因为它们在同一个协程的代码块内，同一个协程的代码是串行的
+  3. line 5 和 line 8几乎是同时执行的，打印`System.currentTimeMillis()`会发现两者时间一样或者悬殊`1ms`
+  4. line 5是不占用线程资源的，因为delay是一个suspend方法，它在这里是会自动挂起释放线程的
+
+### 核心概念
+
+* CoroutineScope
+  * `public suspend fun <R> coroutineScope(): R`
+
+    * for - Creates a CoroutineScope and calls the specified suspend block with this scope. The provided scope inherits its coroutineContext from the outer scope, but overrides the context's Job.
+    * feature
+      * This function is designed for parallel decomposition of work. When any child coroutine in this scope fails, this scope fails and all the rest of the children are cancelled.
+      * When we need to start new coroutines in a structured way inside a `suspend` function without access to the outer scope, we can create a new coroutine scope which automatically becomes a child of the outer scope that this `suspend` function is called from. 
+
+  * GlobalScope
+
+    * 定义
+
+      ```kotlin
+      public object GlobalScope : CoroutineScope {
+          override val coroutineContext: CoroutineContext
+              get() = EmptyCoroutineContext
+      }
+      ```
+
+    * feature
+
+      * The coroutines started from the global scope are all independent; their lifetime is limited only by the lifetime of the whole application. 
+
+    * example
+
+      ```kotlin
+      private suspend fun testGlobalScope() {
+          val job = scope.launch {
+            	// 用GlobalScope启一个协程
+              GlobalScope.launch(Dispatchers.IO) {
+                  delay(1000L)
+                  Log.d(TAG, "GlobalScope.launch finish")
+              }
+            	// 用inherit scope启一个协程
+              launch(Dispatchers.IO) {
+                  delay(1000L)
+                  Log.d(TAG, "inherit scope launch finish")
+              }
+              Log.d(TAG, "waiting...")
+          }
+          delay(500)
+          job.cancel() // cancel掉
+      }
+      ```
+
+      ```bash
+      waiting...
+      GlobalScope.launch finish
+      ```
+
+      
+
+  * scop buider
+
+    * blocking - *blocks* the current thread for waiting
+      1. `fun CoroutineScope.launch(): Job` - Launches a new coroutine without blocking the current thread and returns a reference to the coroutine as a Job.
+      2. `fun <T> CoroutineScope.async(): Deferred<T>` - Creates a coroutine and returns its future result as an implementation of Deferred.
+    * suspend - suspends, releasing the underlying thread for other usages.
+      1. `runBlocking()` - Runs a new coroutine and **blocks** the current thread interruptibly until its completion.
+
+* Job
+  * what? - A background job. Conceptually, a job is a cancellable thing with a life-cycle that culminates in its completion.
+  * feature
+    * Jobs can be arranged into parent-child hierarchies where cancellation of a parent leads to immediate cancellation of all its children recursively.
+    * Failure of a child with an exception other than CancellationException immediately cancels its parent and, consequently, all its other children.
+  * api
+    * `public suspend fun join()` - Suspends the coroutine until this job is complete. This invocation resumes normally (without exception) when the job is complete for any reason. 
+
+* CoroutineContext
+
+  * what
+
+    * It is a set of elements that define the behaviour of a coroutine.
+    * It is a collection of key-value pairs where keys are instances of  CoroutineContext.Element interface.
+
+  * pre-defined elements
+
+    * CoroutineName
+    * CoroutineDispatcher
+    * Job
+
+  * feature
+
+    * plus - `myContext = Dispatchers.IO + CoroutineName("my-coroutine")`
+
+    * inherit
+
+      ```kotlin
+      // CoroutineScope 的拓展方法 launch
+      public fun CoroutineScope.launch(
+          context: CoroutineContext = EmptyCoroutineContext,
+          block: suspend CoroutineScope.() -> Unit
+      ): Job {
+        // 新的context是传入的context包了一层
+        val newContext = newCoroutineContext(context)
+      }
+      
+      // CoroutineScope 的拓展方法 newCoroutineContext
+      public fun CoroutineScope.newCoroutineContext(context: CoroutineContext): CoroutineContext {
+        // coroutineContext 是 CoroutineScope的成员变量，context是传入的context
+        val combined = coroutineContext + context
+        return combined
+      }
+      ```
+
+* suspend function
+
+  * feature
+    * When a suspend function is called, it can be suspended until the result of its operation is available, and it resumes execution when the result is ready.
+  * example
+    * `public suspend fun delay(timeMillis: Long)`
+    * `public suspend fun <T> withContext(): T` - Calls the specified suspending block with a given coroutine context, suspends until it completes, and returns the result.
+
+### Structured concurrency
+
+* what?
+  * It is a programming paradigm for writing concurrent code that emphasizes safety, clarity, and predictability. 
+* features
+  * Coroutines follow a principle of **structured concurrency** which means that new coroutines can be only launched in a specific **CoroutineScope** which delimits the lifetime of the coroutine.
+  * An outer scope cannot complete until all its children coroutines complete.
+
+***
 
 ## EventBus
 
