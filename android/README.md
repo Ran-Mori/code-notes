@@ -886,8 +886,6 @@ startActivity(intent)
       GlobalScope.launch finish
       ```
 
-      
-
   * scop buider
 
     * blocking - *blocks* the current thread for waiting
@@ -895,7 +893,7 @@ startActivity(intent)
       2. `fun <T> CoroutineScope.async(): Deferred<T>` - Creates a coroutine and returns its future result as an implementation of Deferred.
     * suspend - suspends, releasing the underlying thread for other usages.
       1. `runBlocking()` - Runs a new coroutine and **blocks** the current thread interruptibly until its completion.
-
+  
 * Job
   * what? - A background job. Conceptually, a job is a cancellable thing with a life-cycle that culminates in its completion.
   * feature
@@ -956,6 +954,257 @@ startActivity(intent)
 * features
   * Coroutines follow a principle of **structured concurrency** which means that new coroutines can be only launched in a specific **CoroutineScope** which delimits the lifetime of the coroutine.
   * An outer scope cannot complete until all its children coroutines complete.
+
+### CPS
+
+* what? - Continuation-passing style (CPS) is a programming technique where functions pass on their results to a callback function instead of directly returning them. The callback function takes the result as an argument and continues the execution of the program. This style is often used in functional programming for tasks such as asynchronous programming and error handling.
+
+* example
+
+  ```python
+  function add(a, b, callback) {
+    const sum = a + b;
+    callback(sum);
+  }
+  
+  // The callback function that prints the result
+  function printResult(result) {
+    console.log(`The sum is ${result}`);
+  }
+  
+  // Calling the add function with callback function
+  add(5, 10, printResult);
+  ```
+
+  * We call the `add` function with the two numbers `5` and `10` and the `printResult` function as the callback. When the `add` function completes its calculation, it passes the result to the `printResult` function which outputs `The sum is 15` to the console.
+
+### 协程原理
+
+* 执行顺序
+
+  1. `AbstractCoroutine#start()`
+
+  2. `CoroutineStart#invoke()`
+
+  3. Cancellable.kt
+
+     ```kotlin
+     public fun <T> (suspend () -> T).startCoroutineCancellable(Continuation<T>): Unit {
+       createCoroutineUnintercepted(completion).intercepted().resumeCancellableWith()
+     }
+     ```
+
+  4. IntrinsicsJvm.kt
+
+     ```kotlin
+     public actual fun <T> (suspend () -> T).createCoroutineUnintercepted(
+         completion: Continuation<T>
+     ): Continuation<Unit> {
+       val probeCompletion = probeCoroutineCreated(completion)
+       return if (this is BaseContinuationImpl)
+           create(probeCompletion) // 走这里，实际执行BaseContinuationImpl.create()
+       else
+           createCoroutineFromSuspendFunction(probeCompletion)
+     }
+     ```
+
+  5. ContinuationImpl.kt
+
+     ```kotlin
+     // 上面create创建的就是这个对象
+     internal abstract class SuspendLambda(): ContinuationImpl(completion), SuspendFunction
+     ```
+
+  6. 继续执行第二步的`intercepted()`
+
+  7. IntrinsicsJvm.kt
+
+     ```kotlin
+     // 实际就是执行intercepted()方法, 然后将ContinuationImpl给包一层
+     public actual fun <T> Continuation<T>.intercepted(): Continuation<T> =
+         (this as? ContinuationImpl)?.intercepted() ?: this
+     ```
+
+  8. ContinuationImpl.kt
+
+     ```kotlin
+     private var intercepted: Continuation<Any?>? = null
+     public fun intercepted(): Continuation<Any?> = 
+     	intercepted
+           ?: (context[ContinuationInterceptor]?.interceptContinuation(this) ?: this)
+                 .also { intercepted = it }
+     // 实际就是从context中取出ContinuationInterceptor，然后执行interceptContinuation()
+     ```
+
+  9. CoroutineDispatcher.kt
+
+     ```kotlin
+     public final override fun <T> interceptContinuation(continuation: Continuation<T>): Continuation<T> =
+             DispatchedContinuation(this, continuation) //返回包了一层的Continuation
+     ```
+
+  10. 继续执行第三步的`resumeCancellableWith()`
+
+  11. `DispatchedContinuation#resumeWith()`
+
+      ```kotlin
+      fun resumeCancellableWith(result: Result<T>) {
+        dispatcher.dispatch(context, this)
+      }
+      ```
+
+  12. 后面就会经过一些队列，线程池的操作，最后调用到`BaseContinuationImpl#resumeWith()`
+
+     ```kotlin
+     public final override fun resumeWith(result: Result<Any?>) {
+       val outcome = invokeSuspend(param) // 很核心的一句
+     }
+     ```
+
+* 状态机源代码
+
+  ```kotlin
+  private suspend fun firstFunction() {
+      delay(1000)
+      println( "firstFunction")
+  }
+  
+  private suspend fun secondFunction() {
+      firstFunction()
+      println( "secondFunction")
+      delay(2000)
+  }
+  ```
+
+* 反编译代码
+
+  ```kotlin
+  private static final Object firstFunction(Continuation var0) {
+    //... firstFunction代码省略
+  }
+  
+  private static final Object secondFunction(Continuation var0) {
+    Object $continuation;
+    label27: {
+       if (var0 instanceof <undefinedtype>) {
+          $continuation = (<undefinedtype>)var0;
+          if ((((<undefinedtype>)$continuation).label & Integer.MIN_VALUE) != 0) {
+             ((<undefinedtype>)$continuation).label -= Integer.MIN_VALUE;
+             break label27;
+          }
+       }
+  
+       $continuation = new ContinuationImpl(var0) {
+          // $FF: synthetic field
+          Object result;
+          int label;
+  
+          @Nullable
+          public final Object invokeSuspend(@NotNull Object $result) {
+             this.result = $result;
+             this.label |= Integer.MIN_VALUE;
+             return MainKt.secondFunction(this);
+          }
+       };
+    }
+  
+    Object $result = ((<undefinedtype>)$continuation).result;
+    Object var4 = IntrinsicsKt.getCOROUTINE_SUSPENDED();
+    switch (((<undefinedtype>)$continuation).label) {
+       case 0:
+          ResultKt.throwOnFailure($result);
+          ((<undefinedtype>)$continuation).label = 1;
+          if (firstFunction((Continuation)$continuation) == var4) {
+             return var4;
+          }
+          break;
+       case 1:
+          ResultKt.throwOnFailure($result);
+          break;
+       case 2:
+          ResultKt.throwOnFailure($result);
+          return Unit.INSTANCE;
+       default:
+          throw new IllegalStateException("call to 'resume' before 'invoke' with coroutine");
+    }
+  
+    String var1 = "secondFunction";
+    System.out.println(var1);
+    
+    ((<undefinedtype>)$continuation).label = 2;
+    if (DelayKt.delay(2000L, (Continuation)$continuation) == var4) {
+       return var4;
+    } else {
+       return Unit.INSTANCE;
+    }
+  }
+  ```
+
+* 解析
+
+  1. 每一个suspend函数，编译器都会给它末尾加上一个参数`Continuation`，返回值都是`Object`
+
+     * `private static final Object secondFunction(Continuation var0)`
+     * `DelayKt.*delay*(2000L, (Continuation)$continuation)`
+
+  2. 第一次进入
+
+     1. 执行label 27代码，给`$continuation`初始化，此时`result = null, label = 0`
+     2. 执行switch代码，因为`label = 0`，所以肯定执行case0
+     3. case0中，将label置为1，则第二次进入会走case1；
+     4. 调用`firstFunction((Continuation)$continuation)`
+        1. 如果`firstFunction()` 不挂起，则肯定返回的是`Unit.INSTANCE`，因此直接break执行`System.out.println()`及后面代码，这种情况过于简单我们不考虑
+        2. 如果`firstFunction()` 挂起，则肯定返回`IntrinsicsKt.getCOROUTINE_SUSPENDED()`，则`secondFunction()`立即返回，后面的代码全部都没执行
+
+  3. 第二次进入
+
+     1. 当`firstFunction()`执行完成后，会稀奇古怪地调用到`BaseContinuationImpl#resumeWith()`，因此就会调用到下面代码第二次进入
+
+        ```kotlin
+        public final Object invokeSuspend(@NotNull Object $result) {
+           this.result = $result;
+           this.label |= Integer.MIN_VALUE;
+           return MainKt.secondFunction(this);
+        }
+        ```
+
+     2. 此时label = 1，因此检查了下错误就直接break，执行`System.out.println()`和后面的代码
+
+### 线程切换
+
+* 本质: 一个线程池，通过一个队列，将需要run的协程放进去run，需要挂起的就把线程释放出来
+
+* 参考过程 - 看协程原理 6 - 12步
+
+* 实现
+
+  ```kotlin
+  class CoroutineScheduler(val corePoolSize: Int, val maxPoolSize: Int): Executor, Closeable {
+    val globalCpuQueue = GlobalQueue()
+    val globalBlockingQueue = GlobalQueue()
+    
+    private fun addToGlobalQueue(task: Task): Boolean
+    
+    override fun execute(command: Runnable) = dispatch(command)
+    
+    fun dispatch(block: Runnable, taskContext: TaskContext) {}
+    
+    inner class Worker private constructor() : Thread() {
+      val scheduler get() = this@CoroutineScheduler
+      override fun run() = runWorker()
+      private fun runWorker() {
+        while (!isTerminated && state != WorkerState.TERMINATED) {
+          val task = findTask(mayHaveLocalTasks)
+          if (task != null) {
+            executeTask(task)
+          }
+        }
+      }
+    }
+  }
+  ```
+
+* 其实就是队列，handler那一套思想
 
 ***
 

@@ -22,11 +22,11 @@ class MainActivity : AppCompatActivity() {
 
         textView.setOnClickListener {
             runBlocking {
-//                testBasic()
+                testBasic()
 //                testAsync()
 //                testTwoCoroutines()
 //                testWithContext()
-                testGlobalScope()
+//                testGlobalScope()
             }
         }
     }
