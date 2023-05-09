@@ -1206,6 +1206,188 @@ startActivity(intent)
 
 * 其实就是队列，handler那一套思想
 
+### Flow
+
+* 创建Flow
+
+  1. 调用Flow buidler
+
+     ```kotlin
+     flow {
+         delay(1000)
+         emit(1)
+         delay(1000)
+         emit(2)
+     }
+     ```
+
+  2. Builders.kt
+
+     ```kotlin
+     // 调用flow builder实际上只是new了一个对象，其他啥都没有做
+     public fun <T> flow(block: suspend FlowCollector<T>.() -> Unit): Flow<T> = SafeFlow(block)
+     
+     private class SafeFlow<T>(private val block: suspend FlowCollector<T>.() -> Unit) : AbstractFlow<T>() {
+       	// 仅仅将block块传入collectSafely的调用
+         override suspend fun collectSafely(collector: FlowCollector<T>) {
+             collector.block()
+         }
+     }
+     ```
+
+* 消费Flow
+
+  1. 调用`collect()`方法
+
+     ```kotlin
+     testFlow().collect {
+         Log.d(TAG, "result = $it")
+     }
+     ```
+
+  2. Collect.kt
+
+     ```kotlin
+     public suspend fun <T> Flow<T>.collect(action: suspend (value: T) -> Unit): Unit =
+         // 调用Flow#collect方法，并将action包成FlowCollector，emit执行就是action执行
+     		this.collect(object : FlowCollector<T> {
+             override suspend fun emit(value: T) = action(value)
+         })
+     ```
+
+  3. Flow.kt
+
+     ```kotlin
+     public abstract class AbstractFlow<T> : Flow<T> {
+       public final override suspend fun collect(collector: FlowCollector<T>) {
+         	// 将collector包成SafeCollector
+           val safeCollector = SafeCollector(collector, coroutineContext)
+         	// 调用collectSafely
+           collectSafely(safeCollector)
+       }
+       
+       public abstract suspend fun collectSafely(collector: FlowCollector<T>)
+     }
+     ```
+
+  4. Buider.kt
+
+     ```kotlin
+     private class SafeFlow<T>(private val block: suspend FlowCollector<T>.() -> Unit) : AbstractFlow<T>() {
+         override suspend fun collectSafely(collector: FlowCollector<T>) {
+           	// 真正调用到创建Flow时传入的代码
+             collector.block()
+         }
+     }
+     ```
+
+* 观察者模式
+
+  * 源代码
+
+    ```kotlin
+    private suspend fun testFlow(): Flow<Int> {
+        return flow {
+            delay(1000)
+            emit(1)
+            delay(1000)
+            emit(2)
+        }
+    }
+    ```
+
+  * 反编译代码
+
+    ```kotlin
+    FlowKt.flow((Function2)(new Function2((Continuation)null) {
+      private Object L$0; // collector，即消费flow时传入的方法
+     	int label; // switch执行时的标志位
+      
+      public final Object invokeSuspend(@NotNull Object $result) {
+        Integer var10001; // emit时的数据
+        FlowCollector $this$flow; // collector，即消费flow时传入的方法
+        Object var3; // 常量，标记是否有挂起
+        label34: {
+          label33: {
+            var3 = IntrinsicsKt.getCOROUTINE_SUSPENDED(); // 常量固定
+            switch(this.label) {
+            	case 0:
+                $this$flow = (FlowCollector)this.L$0; // collector赋值
+                this.label = 1; // 下次进case 1
+                if (DelayKt.delay(1000L, this) == var3) {
+                  return var3; // 第一次执行时直接返回
+                }
+                break;
+            	case 1:
+              	$this$flow = (FlowCollector)this.L$0;
+              	break;
+            }
+            
+            var10001 = Boxing.boxInt(1); // 即将emit出的1
+            this.label = 2; // 走case2
+            if ($this$flow.emit(var10001, this) == var3) { // 执行emit, emit实际执行的是消费时传入的block
+               return var3;
+            }
+          }
+        }
+      }
+    }
+    ```
+
+* 操作符如map
+
+  1. 示例代码
+
+     ```kotlin
+     private suspend fun testFlow(): Flow<Int> {
+         return flow {
+             emit(1)
+         }
+             .map {
+                 it + 1
+             }
+     }
+     ```
+
+  2. 调用Flow的拓展函数map()
+
+     ```kotlin
+     // 调用transform，将旧Flow包了一层成新Flow
+     public fun <T, R> Flow<T>.map(transform: suspend (value: T) -> R): Flow<R> = transform { value ->
+        return@transform emit(transform(value))
+     }
+     ```
+
+  3. 调用Flow的拓展函数unsafeTransform()
+
+     ```kotlin
+     // 调用unsafeFlow，将旧Flow包了一层成新Flow
+     fun <T, R> Flow<T>.unsafeTransform(
+         transform: suspend FlowCollector<R>.(value: T) -> Unit
+     ): Flow<R> = unsafeFlow {
+         Flow<T>.collect { value ->
+             return@collect transform(value)
+         }
+     }
+     ```
+
+  4. 调用unsafeFlow()
+
+     ```kotlin
+     // 创建一个Flow，将旧Flow包成新Flow
+     fun <T> unsafeFlow(block: suspend FlowCollector<T>.() -> Unit): Flow<T> {
+         return object : Flow<T> {
+             override suspend fun collect(collector: FlowCollector<T>) {
+                 collector.block()
+             }
+         }
+     }
+     ```
+
+  5. collect()执行顺序
+
+     * 看了下反编译代码，和Rxjava一样的，就是把flow给包了一层，但是看kotlin各种拓展函数，函数当参数传递没有看明白
+
 ***
 
 ## EventBus

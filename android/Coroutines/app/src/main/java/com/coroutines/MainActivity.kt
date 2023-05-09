@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import kotlin.coroutines.EmptyCoroutineContext
 
 class MainActivity : AppCompatActivity() {
@@ -22,11 +23,15 @@ class MainActivity : AppCompatActivity() {
 
         textView.setOnClickListener {
             runBlocking {
-                testBasic()
+//                testBasic()
 //                testAsync()
 //                testTwoCoroutines()
 //                testWithContext()
 //                testGlobalScope()
+                testFlow()
+                    .collect {
+                        Log.d(TAG, "result = $it")
+                    }
             }
         }
     }
@@ -91,6 +96,18 @@ class MainActivity : AppCompatActivity() {
         }
         delay(500)
         job.cancel()
+    }
+
+    private suspend fun testFlow(): Flow<Int> {
+        return flow {
+            delay(1000)
+            emit(1)
+            delay(1000)
+            emit(2)
+        }
+            .map {
+                it + 1
+            }
     }
 
     override fun onDestroy() {
