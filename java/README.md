@@ -1,5 +1,155 @@
 # Java
 
+## reference
+
+### PhantomReference
+
+* 类
+
+  ```java
+  public class PhantomReference<T> extends Reference<T> {
+    public PhantomReference(T referent, ReferenceQueue<? super T> q) {
+        super(referent, q);
+    }
+  }
+  ```
+
+* 注释
+
+  * Phantom reference objects, which are enqueued after the collector determines that their referents may otherwise be reclaimed. Phantom references are most often used to schedule post-mortem cleanup actions.
+  * Suppose the garbage collector determines at a certain point in time that an object is phantom reachable. At that time it will atomically clear all phantom references to that object and all phantom references to any other phantom-reachable objects from which that object is reachable. At the same time or at some later time it will enqueue those newly-cleared phantom references that are registered with reference queues.
+
+* 使用case
+
+  1. for managing native resources in Java. One way to do this is to use a `PhantomReference` to keep track of the object and use a reference queue to receive notifications when the object is garbage collected. This way, you can ensure that native resources are properly released when they are no longer needed.
+  2. for implementing caching or resource management systems,  where objects may be removed from memory at any time. By using a `PhantomReference`, you can keep track of when an object is removed from memory and take appropriate action, such as re-creating the object or updating a cache.
+
+* example
+
+  ```java
+  public class ResourceHandler {
+      private static ResourceHandler instance = new ResourceHandler();
+      private ReferenceQueue<Object> referenceQueue = new ReferenceQueue<>();
+      private Thread cleanupThread;
+  
+      private ResourceHandler() {
+          cleanupThread = new Thread(() -> {
+              while (true) {
+                  try {
+                      // Wait for a reference to become available
+                      // and remove its corresponding resource
+                      PhantomReference<?> reference = (PhantomReference<?>) referenceQueue.remove();
+                      Resource resource = (Resource) reference.get();
+                      if (resource != null) {
+                          resource.close();
+                      }
+                  } catch (InterruptedException e) {
+                      // Handle InterruptedException as needed
+                      break;
+                  }
+              }
+          });
+          cleanupThread.setDaemon(true);
+          cleanupThread.start();
+      }
+  
+      public static ResourceHandler getInstance() {
+          return instance;
+      }
+  
+      public void manageResource(Resource resource) {
+          PhantomReference<Resource> reference = new PhantomReference<>(resource, referenceQueue);
+          // Register the resource with the cleanup thread
+          // and manage it using the phantom reference
+          // ...
+      }
+  }
+  ```
+
+  * In this example, the `ResourceHandler` class manages resources using a `PhantomReference` and `ReferenceQueue`. When a new resource is created, it is registered with the cleanup thread using a `PhantomReference`. When the resource is no longer needed and is garbage collected, the cleanup thread receives a notification through the `ReferenceQueue`, retrieves the resource using the `PhantomReference`, and releases it using the `close` method.
+
+### WeakReference
+
+* 类
+
+  ```java
+  public class WeakReference<T> extends Reference<T> {
+    public WeakReference(T referent)
+  	// 这个构造方法和功能同PhantomReference一样
+    public WeakReference(T referent, ReferenceQueue<? super T> q)
+  }
+  ```
+
+* for? 
+
+  * It provides a way to reference an object but at the same time not keep it from being garbage collected.
+
+* example
+
+  * One of the common use cases for `WeakReference` is to implement caches. In a caching system, you want to keep frequently used objects in memory to access them quickly but at the same time, you need to remove rarely used objects to reduce the memory footprint. A `WeakReference` can help here because it allows you to hold a reference to an object that may be garbage collected if there are no other strong references to it.
+
+  ```java
+  public class Cache<K, V> {
+      private Map<K, WeakReference<V>> entries;
+      public Cache() { entries = new HashMap<>(); }
+      public void put(K key, V value) {
+          entries.put(key, new WeakReference<>(value));
+      }
+      public V get(K key) {
+          WeakReference<V> ref = entries.get(key);
+          if (ref != null) {
+              V value = ref.get();
+              if (value != null) {
+                  return value;
+              } else {
+                  entries.remove(key);
+              }
+          }
+          return null;
+      }
+      public int size() { return entries.size(); }
+      public void clear() { entries.clear(); }
+  }
+  ```
+
+### SoftReference
+
+* 类
+
+  ```java
+  public class SoftReference<T> extends Reference<T> {
+    // Timestamp clock, updated by the garbage collector
+    private static long clock;
+    // imestamp updated by each invocation of the get method. The VM may use this field when selecting soft references to be cleared, but it is not required to do so.
+    private long timestamp;
+    public SoftReference(T referent) {}
+    // 这个构造方法和功能同PhantomReference一样
+    public SoftReference(T referent, ReferenceQueue<? super T> q) {}
+    public T get() {}
+  }
+  ```
+
+* What?
+
+  * It is another class in Java that allows you to create references to objects that may be garbage collected.
+  * A `SoftReference` is similar to a `WeakReference`. 
+
+* 和WeakRefrence的区别
+
+  * In contrast to a weak reference, which is always a candidate for garbage collection, a `SoftReference` can stay in memory longer as long as the JVM still has enough memory. If the JVM starts to run out of memory, the `SoftReference` objects may be garbage collected to free up memory.
+  * The main difference between `WeakReference` and `SoftReference` is the likelihood of being garbage collected.
+
+* 问答
+
+  * Q: if there is both a strong reference and a soft reference to an object when the memory is under pressure, will the object be reclaimed by gc?
+  * A: No. The JVM will try to free up memory by first collecting only weak references and, if necessary, then collecting soft references. However, if the object still has a strong reference, it will not be garbage collected, even if there is memory pressure.
+
+### StrongReferences
+
+* `StrongReference` is not a separate class in Java because it is simply the default type of reference that objects have in Java. When you create an object and assign it to a variable, the variable holds a strong reference to the object.
+
+***
+
 ## rxjava
 
 > 以下代码基于 'io.reactivex.rxjava3:rxjava:3.1.6'
