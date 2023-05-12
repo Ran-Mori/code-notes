@@ -1,5 +1,183 @@
 # Java
 
+## object
+
+### getClass
+
+* signature - `public final native Class<?> getClass();`
+* annotation - Returns the runtime class of this Object.
+
+### hashCode
+
+* signature - `public native int hashCode();`
+
+* annotation - Returns a hash code value for the object.
+
+* how hashCode is calculated
+
+  1. by default - It is generated based on the memory address of the object.
+
+  2. overide - You can reimplemented it base on your purpose.
+
+     ```java
+     public class MyClass {
+         private int myValue;
+     
+         public MyClass(int value) { this.myValue = value; }
+     
+         @Override
+         public int hashCode() {
+             final int prime = 31;
+             int result = 1;
+             result = prime * result + myValue;
+             return result;
+         }
+     }
+     ```
+
+### equal
+
+* signature - `public boolean equals(Object obj)`
+
+* `==` 与 `equal()`
+
+  * `==` operator compares the object references of two objects to check if they refer to the same object in memory. 
+  * In the `Object` class, the default implementation of the `equals()` method uses the `==` operator to compare object references.
+  *  `equals()` method is always overrided to  check if two objects are equal based on their state and not based on their memory location.
+
+* `==` between primitive data type and Object
+
+  * With primitive data types, such as `int`, `double`, `float`, etc., the `==` operator compares the values of the two operands and returns `true` if they are equal, and `false` otherwise.
+
+    ```java
+    int a = 10;
+    int b = 10;
+    if (a == b) { System.out.println("a and b are equal"); }
+    ```
+
+  * With objects, the `==` operator compares the memory locations of the two objects and not the values of the objects themselves.
+
+* `==` and boxing/unboxing
+
+  * When comparing a primitive value with a wrapper object using `==`, Java performs auto-unboxing on the wrapper object to extract the primitive value before comparison. This means that a primitive value and its corresponding wrapper object can be compared using `==` and will be equal to each other if they have the same value.
+
+    ```java
+    int x = 10;
+    Integer y = 10; // boxing, turn primitive data type int to wrapper type Integer
+    System.out.println(x == y); // true (auto-unboxing performed)
+    Integer z = new Integer(10);
+    System.out.println(y == z); // false (different instances in memory)
+
+
+### clone
+
+* signature - `protected native Object clone() throws CloneNotSupportedException`
+
+* features
+
+  * If the class of this object does not implement the interface `Cloneable`, then a CloneNotSupportedException is thrown.
+
+    ```java
+    // 空接口，什么方法都没有，仅仅是标记
+    public interface Cloneable {
+    }
+    ```
+
+  * The default implementation of the `clone()` method performs a **shallow copy**.
+  * It doesn't need to call constructor.
+
+* shallow copy and deep copy
+
+  * A *shallow copy* copies the member variables of an object, but if a member variable is a reference to another object, the copy will have a reference to the same object as the original. In other words, the copy and the original will share the same reference to any objects that are not primitive types or immutable.
+  * A *deep copy*, on the other hand, creates new instances of all referenced objects and copies their data. This means that the copy and the original will have separate and distinct copies of any objects that are not primitive types or immutable.
+
+* trun shadow clone to deep clone
+
+  ```java
+  // 必须实现Cloneable接口，不然调clone会崩溃
+  public class MyClass implements Cloneable {
+      private int x;
+      private MyCustomObject z;
+  
+      @Override
+      public Object clone() throws CloneNotSupportedException {
+          MyClass copy = (MyClass) super.clone();
+        	// 对成员也拷贝
+          copy.z = (MyCustomObject) z.clone();
+          return copy;
+      }
+  }
+
+### notify
+
+* signature - `public final native void notify()`
+* for
+  * Wakes up a single thread that is waiting on this object's monitor. If any threads are waiting on this object, one of them is chosen to be awakened.
+* requirement
+  * This method should only be called by a thread that is **the owner of this object's monitor**.
+  * how to be?
+    1. By executing a synchronized instance method of that object.
+    2. By executing the body of a synchronized statement that synchronizes on the object.
+    3. For objects of type Class, by executing a synchronized static method of that class.
+* the monitor of an object
+  * what? - It is a mechanism used to ensure that only one thread can access the object's synchronized methods or code blocks at a time. 
+  * explanation - When a thread attempts to execute a synchronized method or code block of an object, it must first obtain the monitor of that object. If the monitor is currently owned by another thread, the waiting thread will be blocked until the monitor becomes available. Once the thread obtains the monitor, it can execute the synchronized code and when it completes the execution, it releases the monitor.
+  * implementation - It is implemented internally using the object's monitor lock. Every object in Java has its own monitor lock. The monitor lock is implemented by the JVM and is completely transparent to the programmer.
+* `synchronized()` and `wait()、notify()`
+  * `synchronized()` is a condition for calling `wait()` and `notify()` methods.  Both `wait()` and `notify()` must be called while holding the lock on the object, which is achieved by calling `synchronized()` on the same object. This is because calling `wait()` releases the lock and allows other threads to synchronize on the same object and access its methods and variables.
+
+### wait
+
+* signature - `public final void wait(long timeoutMillis, int nanos) throws InterruptedException`
+
+* annotation - Causes the current thread to wait until it is awakened, typically by being notified or interrupted, or until a certain amount of real time has elapsed.
+
+* what it does
+
+  * It releases the lock on the object and goes to sleep. Other threads that are trying to acquire the lock on the object will not be blocked. 
+
+* summarize
+
+  * `synchronized()` controsl the lock of the object, while `nofity()、wait()` control the state(sleep, wake) of threads.
+
+* 现在有三个线程A、B、C、D，一个对象obj，现进行如下分析
+
+  ```java
+  //Thread A
+  synchronized(obj) {
+   obj.wait()
+  }
+  //Thread B
+  synchronized(obj) {
+   obj.wait()
+  }
+  //Thread C
+  synchronized(obj) {
+   obj.wait()
+  }
+  //Thread D
+  synchronized(obj) {
+   obj.notify();
+   obj.notifyAll();
+  }
+  ```
+
+  1. 线程A执行`synchronized(obj)`时获取了obj的对象锁，执行`obj.wait()`时释放对象锁，让线程A睡眠。
+  2. 因为上一步最后释放了对象锁，因此线程B执行`synchronized(obj)`时能获取对象锁，执行`obj.wait()`时释放对象锁，让线程B睡眠。
+  3. 因为上一步最后释放了对象锁，因此线程C执行`synchronized(obj)`时能获取对象锁，执行`obj.wait()`时释放对象锁，让线程C睡眠。
+  4. 最后当线程D执行`notify()`时，会唤醒A、B、C三者中任意一个线程，这个线程自然而然很容易就会获取到对象锁，然后执行完`synchronized(obj)`语句后，释放对象锁。但另外两个线程会永远睡眠。
+  5. 最后当线程D执行`notifyAll()`时，会唤醒A、B、C三个线程，三者都去竞争对象锁。自然而然第一个线程竞争到对象锁，它执行完`synchronized(obj)`后释放对象锁；接着第二个线程竞争到对象锁，执行相同操作；最后一个线程同理，最后释放对象锁，三个线程的`synchronized(obj)`都执行完毕。
+
+### finalize
+
+* signature - `protected void finalize() throws Throwable { }`
+* 注释 - Called by the garbage collector on an object when garbage collection determines that there are no more references to the object. A subclass overrides the finalize method to dispose of system resources or to perform other cleanup.
+* features
+  * 已过时，不再使用
+  * The ref.Cleaner and ref.PhantomReference provide more flexible and efficient ways to release resources when an object becomes unreachable.
+
+***
+
 ## reference
 
 ### PhantomReference
