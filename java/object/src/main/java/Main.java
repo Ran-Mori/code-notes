@@ -5,7 +5,7 @@ public class Main {
         Double b = Double.valueOf(34.434);
         double c = 34.434;
         synchronized (a) {
-            
+
         }
         System.out.println("start___________________");
         System.out.println(a == c);

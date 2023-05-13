@@ -548,4 +548,118 @@
 
 ***
 
-## 
+## string
+
+### class
+
+```java
+public final class String
+    implements java.io.Serializable, Comparable<String>, CharSequence,
+               Constable, ConstantDesc
+```
+
+### Immutable
+
+* advantages
+
+  1. Security: Since Strings can be used in Cryptography and Network communication, it is important for their values to remain unchanged during transmission or storage.
+  2. Thread Safety
+  3. string pool cache
+  4. use strings in hash-based collections.
+
+* how to ensure immutable
+
+  1. Final class.
+
+  2. Private final fields: The state of a String object is stored in private final fields.
+
+  3. Operations return new objects: All methods that perform operations on a String, such as substring(), replace(), etc., return a new String object that has the modified value.
+
+     ```java
+     String str = "Hello";
+     str.concat(" World!"); // Creates a new String object "Hello World!", but str still refers to the old "Hello" object
+     ```
+
+### interned strings
+
+* what
+
+  * They are a subset of String pool. 
+
+  * Interned strings in Java are the Strings stored in constant pool (String pool) of Heap area.
+
+* explanation 
+
+  * When a String literal is created, the JVM checks if the String literal already exists in the constant pool. If the String literal already exists in the constant pool, then instead of creating a new String literal, JVM returns the reference to the existing String literal. This reuse of existing String literals is called interning of Strings.
+
+* advantages
+
+  * It reduces memory usage
+  * It helps with String comparison as the JVM can use the `==` operator instead of the `equals()` method in certain cases.
+
+* intern method
+
+  * signature - `public native String intern()`
+  * When the intern method is invoked, if the pool already contains a string equal to this String object as determined by the equals(Object) method, then the string from the pool is returned. Otherwise, this String object is added to the pool and a reference to this String object is returned.
+
+* exmaples
+
+  * "java", "jvm", "class"
+
+### StringBuilder/Buffer
+
+* why mutable
+
+  ```java
+  abstract class AbstractStringBuilder {
+    // 这个数组是可变的
+    byte[] value;
+    // The count is the number of characters used.
+    int count;
+    
+    public AbstractStringBuilder append(String str) {
+        int len = str.length();
+      	// 执行扩容操作
+        ensureCapacityInternal(count + len);
+      	// 插入
+        putStringAt(count, str);
+        count += len;
+        return this;
+    }
+  }
+  ```
+
+* thread safe
+
+  * StringBuilder is not thread-safe
+
+    ```java
+    public StringBuilder append(String str) {
+        super.append(str);
+        return this;
+    }
+    ```
+
+  * StringBuffer is thread-safe
+
+    ```java
+    // it use synchronized keyword
+    public synchronized StringBuffer append(String str) {
+        toStringCache = null;
+        super.append(str);
+        return this;
+    }
+
+### encodings and character sets
+
+* example
+
+  ```java
+  String str = "Hello, World!";
+  byte[] bytes = str.getBytes(StandardCharsets.UTF_8); // encode
+  
+  // To convert a byte array back to string using the same encoding
+  String newStr = new String(bytes, StandardCharsets.UTF_8); // decode
+  ```
+
+***
