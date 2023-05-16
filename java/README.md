@@ -1,5 +1,159 @@
 # Java
 
+## concurrency
+
+### AtomicInteger
+
+* class code
+
+  ```java
+  public class AtomicInteger extends Number {
+    // 一个Unsafe
+    private static final Unsafe U = Unsafe.getUnsafe();
+    // 一个volatile
+    private volatile int value;
+    // 这个操作不是线程安全的
+    public final void set(int newValue) { value = newValue; }
+    
+    public final boolean compareAndSet(int expectedValue, int newValue) {
+      //调用U提供的CAS api，这是线程安全的
+      return U.compareAndSetInt(this, VALUE, expectedValue, newValue);
+    }
+    
+    public final int getAndIncrement() {
+        return U.getAndAddInt(this, VALUE, 1);
+    }
+  }
+  ```
+
+* example
+
+  ```java
+  private void testAtomicInteger() {
+      AtomicInteger ai = new AtomicInteger();
+      ai.set(10); // 这一步不保证thread-safe，因为它仅仅是给一个volatile的变量赋值
+      System.out.println(ai.incrementAndGet()); // 这一步是thread-safe的，因此它底层是CAS
+  }
+
+### Lock
+
+* AbstractQueuedSynchronizer
+
+  * It implements most of the synchronization mechanics that are needed by a concurrent synchronizer, including a wait queue, thread acquisition and release, and reentrant support.
+
+  * It is a basic framework for implementing locks, semaphores, and similar kinds of thread synchronization constructs in Java.
+
+  * code
+
+    ```java
+    public abstract class AbstractQueuedSynchronizer
+        extends AbstractOwnableSynchronizer {
+      
+      abstract static class Node {
+        volatile Node prev;
+        volatile Node next;
+        Thread waiter; // 队列节点，存放线程
+        volatile int status;
+      }
+      
+      int acquire(Node node, int arg, boolean shared, boolean interruptible, boolean timed, long time) {
+        LockSupport.park(this); // 挂起线程，暂停调度
+      }
+      
+      public final void acquire(int arg) {
+        // 当锁没获得成功时，就调动方法挂起当前线程
+        if (!tryAcquire(arg)) {
+          acquire(null, arg, false, false, false, 0L);
+        }
+      }
+      
+      public final boolean release(int arg) {
+        if (tryRelease(arg)) {
+          LockSupport.unpark(s.waiter); // 线程可以继续调度
+          return true;
+        }
+        return false;
+      }
+    }
+
+* Lock
+
+  ```java
+  class Mutex implements Lock {
+    
+    private static class Sync extends AbstractQueuedSynchronizer {
+      
+      public boolean tryAcquire(int acquires) {
+        if (compareAndSetState(0, 1)) {
+          // CAS上锁成功，当前线程持有锁，返回true
+          setExclusiveOwnerThread(Thread.currentThread());
+          return true;
+        }
+        // 没上锁成功，让抽象Sync去挂起当前线程
+        return false;
+      }
+      
+      protected boolean tryRelease(int releases) {
+        if (getExclusiveOwnerThread() != Thread.currentThread()) {
+          // 当前线程都没持有锁，肯定不能进行释放操作
+          throw new IllegalMonitorStateException();
+        }
+        // 清空线程，设置状态为0
+        setExclusiveOwnerThread(null);
+        setState(0);
+        return true;
+      }
+      
+      public boolean isLocked() { return getState() != 0; }
+    }
+    
+    // 把所有活儿都委托给这个sync
+    private final Sync sync = new Sync();
+    
+    public void lock() { sync.acquire(1); } // acquire() 会先调到tryAcquire()
+    public boolean tryLock()  { return sync.tryAcquire(1); }    
+    public void unlock() { sync.release(1); }
+  }
+  ```
+
+* fair and unfair 
+
+  ```java
+  //see Semaphore.java
+  
+  class NonfairSync extends AbstractQueuedSynchronizer {
+    
+  	int tryAcquireShared(int acquires) {
+      for (;;) {
+        int available = getState();
+        int remaining = available - acquires;
+  			// 非公平锁上来就直接看是否还有剩余，有剩余管都不管队列里面的直接尝试获取锁
+        if (remaining < 0 ||
+          compareAndSetState(available, remaining))
+          return remaining;
+      }
+    }
+  }
+  
+  class FairSync extends AbstractQueuedSynchronizer {
+    int tryAcquireShared(int acquires) {
+      for (;;) {
+        // 公平锁会先处理队列里面已经排队久等了的线程
+        if (hasQueuedPredecessors())
+          return -1;
+        int available = getState();
+        int remaining = available - acquires;
+        // 然后在去尝试获取锁
+        if (remaining < 0 ||
+          compareAndSetState(available, remaining))
+          return remaining;
+      }
+    }
+  }
+  ```
+
+  
+
 ## object
 
 ### getClass
