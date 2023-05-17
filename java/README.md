@@ -25,7 +25,6 @@
       - PriorityQueue
       - DelayQueue
 - Map
-	- SynchronizedMap
 	- ConcurrentHashMap
 	- HashMap
 		- LinkedHashMap
@@ -343,14 +342,254 @@
         }
       }
       
-      public E poll(long timeout, TimeUnit unit) {
+      public E take() {
         final ReentrantLock lock = this.lock;
-        lock.lockInterruptibly(); 
+        lock.lockInterruptibly();
+        try {
+          available.await(); // 先await一下
+          return q.poll(); // 然后才允许poll获取元素
+        } finally {
+          lock.unlock();
+        }
       }
     }
     ```
 
-  * implementation
+
+### Map
+
+* HashMap
+
+  ```java
+  public class HashMap<K,V> extends AbstractMap<K,V> implements Map<K,V> {
+    
+    static final int TREEIFY_THRESHOLD = 8; // 桶中元素超过8个就转为红黑树
+  
+    static class Node<K,V> implements Map.Entry<K,V> {
+      final int hash; // hash值
+      final K key; // key不可变
+      V value; // value可变
+      Node<K,V> next; // 单向链表的下一个节点
+    }
+    // 根据继承关系，它继承自HashMap.Node
+    static final class TreeNode<K,V> extends LinkedHashMap.Entry<K,V> {}
+    
+    transient Node<K,V>[] table; // table的元素既可以是单向链表HashMap.Node，也能是红黑树HashMap.TreeNode
+    int threshold; // 总数达到这个就扩容
+    final float loadFactor; // 用来计算threshold = table.length * loadFactor
+    
+    public HashMap() {
+      // 空构造函数只是赋loadFactor为0.75
+      this.loadFactor = DEFAULT_LOAD_FACTOR; // all other fields defaulted
+    }
+    
+    static final int hash(Object key) {
+        int h;
+      	// 计算hash值，将高16位与低16位做异或
+        return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
+    }
+    
+    final Node<K,V>[] resize() {
+      Node<K,V>[] oldTab = table; // 旧的table
+      int oldCap = (oldTab == null) ? 0 : oldTab.length; // 旧的table容量
+      int oldThr = threshold;
+      int newCap, newThr = 0;
+      if (oldCap > 0) {
+        if ((newCap = oldCap << 1) < MAXIMUM_CAPACITY && // 新容量直接翻倍double
+               oldCap >= DEFAULT_INITIAL_CAPACITY)
+          newThr = oldThr << 1; // 新阈值翻倍double
+      } else if (oldThr > 0) { // initial capacity was placed in threshold
+        newCap = oldThr; // 构造函数内对threshold进行了赋值
+      } else {
+        // 完全第一次初始化，容量为16，阈值为(16 * 加载因子)
+        newCap = DEFAULT_INITIAL_CAPACITY;
+        newThr = (int)(DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY);
+      }
+      threshold = newThr; // 赋值给threshold
+      Node<K,V>[] newTab = (Node<K,V>[])new Node[newCap];
+      table = newTab; //创建新容量的table，并赋给table成员变量
+      if (oldTab != null) {
+        // 进行换桶操作
+        if (e.next == null) {
+          newTab[e.hash & (newCap - 1)] = e; // hash取与方法
+        } else if (e instanceof TreeNode) {
+          ((TreeNode<K,V>)e).split(this, newTab, j, oldCap); // 执行红黑树的相关操作
+        } else { 
+          // 执行二倍扩容基础的链表换桶操作，基本是原桶元素一半在原桶，一半在新桶
+        }
+      }
+    }
+    
+    // put都会调到这个方法
+    V putVal(int hash, K key, V value, boolean onlyIfAbsent, boolean evict) {
+      Node<K,V>[] tab; Node<K,V> p; int n, i; // tab -> 当前桶，p -> 桶中当前hash的元素, n -> 桶长
+      if ((tab = table) == null || (n = tab.length) == 0) // 赋值tab，赋值length
+        	n = (tab = resize()).length; // 执行resize()扩容，赋值length
+      if ((p = tab[i = (n - 1) & hash]) == null)  // 当前这个桶为空
+        tab[i] = newNode(hash, key, value, null); // 为空简单，直接放进桶中当第一个元素
+      else {
+        Node<K,V> e; K k; // k -> 桶中当前hash元素的key
+        if (p.hash == hash && ((k = p.key) == key || (key != null && key.equals(k)))) // 桶中元素key相同case，即put的key相同但value一般不同的情况
+          e = p;
+        else if (p instanceof TreeNode) // 红黑树的情况
+          e = ((TreeNode<K,V>)p).putTreeVal(this, tab, hash, key, value); // 红黑树插入，太复杂了
+        else {
+          for (int binCount = 0; ; ++binCount) {
+            if ((e = p.next) == null) { // 单向链表向下遍历，找到链表尾
+              p.next = newNode(hash, key, value, null); // 插入到链表尾部
+              if (binCount >= TREEIFY_THRESHOLD - 1) // -1 for 1st 桶元素大于8直接链表转红黑树
+                treeifyBin(tab, hash); // 把链表转成红黑树
+              break;
+            }
+            if (e.hash == hash && ((k = e.key) == key || (key != null && key.equals(k)))) // Key相同case
+              break;
+            p = e;
+          }
+        }
+        if (e != null) { // existing mapping for key
+          V oldValue = e.value; 
+          if (!onlyIfAbsent || oldValue == null)
+            e.value = value; // 相同key修改值
+          afterNodeAccess(e);
+          return oldValue;
+        }
+      }
+      if (++size > threshold)
+      	resize(); // 达到扩容条件，直接扩容
+    } 
+  }
+  ```
+
+* LinkedHashMap
+
+  * signature - `public class LinkedHashMap<K,V> extends HashMap<K,V> implements Map<K,V>`, 继承自map
+
+  * code
+
+    ```java
+    public class HashMap<K,V> {
+      
+      // Callbacks to allow LinkedHashMap post-actions
+      void afterNodeAccess(Node<K,V> p) { } // 暴露了几个hook给LinkedHashMap
+      void afterNodeInsertion(boolean evict) { }
+      void afterNodeRemoval(Node<K,V> p) { }
+      
+      final V putVal() {
+        afterNodeAccess(e); // 删改的某些时机调用这些hook
+        afterNodeInsertion(evict);
+      }
+    }
+    
+    public class LinkedHashMap<K,V> extends HashMap<K,V> { // 继承自HashMap
+    
+      transient LinkedHashMap.Entry<K,V> head; // The head (eldest) of the doubly linked list.
+      transient LinkedHashMap.Entry<K,V> tail; // The head (eldest) of the doubly linked list.
+      
+    }
+    ```
+
+  * feature
+
+    * `HashMap` does not guarantee any specific order of the entries. It uses the hash code of the keys to store and retrieve the values in the map, so the order is determined by the hash codes. 
+    * `LinkedHashMap` maintains the order in which the entries were inserted into the map. It uses a doubly linked list to maintain the order of the keys and values. This means that iterating over a `LinkedHashMap` returns the entries in the same order in which they were added to the map.
+    * In summary, if you require a map that maintains the order of the entries, you should use `LinkedHashMap`. Otherwise, use `HashMap`.
+
+* Hashtable
+
+  * 实验原理和`HashMap`一样
+  * 线程安全，但实现很蠢，是方法全部加`synchronized`关键字实现的，性能弱于`HashMap`
+
+* ConcurrentHashMap
+
+  * feature
+
+    1. 实现原理和`HashMap`基本类似，桶 + 链表或者红黑树，伺机进行桶扩容
+    2. 并发实现 -> `volatile, CAS, synchronized()`
+    3. 能用CAS尽量用CAS，要上锁也是锁一个桶而不是锁整个`HashMap`，最大的锁粒度是一个桶
+
+  * code
+
+    ```java
+    V putVal(K key, V value, boolean onlyIfAbsent) {
+      Node<K,V> f
+      if ((f = tabAt(tab, i = (n - 1) & hash)) == null) {
+        // no lock when adding to empty bin, 该用CAS的时候就用CAS
+        if (casTabAt(tab, i, null, new Node<K,V>(hash, key, value))) 
+      }
+      
+      synchronized (f) {
+        // 是在不行要上锁，但也只是锁一个桶而不是把整个HashMap都锁住，将锁的粒度降到最低
+      }
+    }
+    ```
+
+* TreeMap
+
+  * feature
+
+    1. The underlying data structure of `TreeMap` is a red-black tree. A red-black tree is a self-balancing binary search tree.
+
+  * code
+
+    ```java
+    public class TreeMap<K,V> extends AbstractMap<K,V> {
+      private final Comparator<? super K> comparator; // 排序的比较器
+      private transient Entry<K,V> root; // 红黑树的根节点
+      private static final boolean RED   = false; // 红黑树用到的一些值
+      private static final boolean BLACK = true;
+      
+      private V put(K key, V value, boolean replaceOld) {
+        Entry<K,V> t = root; // 树的根节点
+        int cmp;
+        Entry<K,V> parent;
+        Comparator<? super K> cpr = comparator;
+        do {
+          parent = t;
+          cmp = cpr.compare(key, t.key);
+          if (cmp < 0) // 根据cmp来取左还是取右
+            t = t.left;
+          else if (cmp > 0)
+            t = t.right;
+          else {
+            V oldValue = t.value;
+            if (replaceOld || oldValue == null) {
+              t.value = value;
+            }
+            return oldValue;
+          }
+        } while (t != null); // 循环找到parent
+        // 经过上面的操作，找到了应该插入的parent
+        Entry<K,V> e = new Entry<>(key, value, parent);
+        if (addToLeft) / 执行插入节点操作
+          parent.left = e;
+        else
+          parent.right = e;
+        fixAfterInsertion(e); // 执行红黑树平衡
+      }
+      
+      final Entry<K,V> getEntryUsingComparator(Object key) {
+        K k = (K) key;
+        Comparator<? super K> cpr = comparator;
+        if (cpr != null) {
+          Entry<K,V> p = root;
+          while (p != null) { // 因为是红黑树，所以直接比较
+            int cmp = cpr.compare(k, p.key);
+            if (cmp < 0) // 小于取走
+              p = p.left;
+            else if (cmp > 0) // 大于取右
+              p = p.right;
+            else
+              return p; // 相等直接返回
+          }
+        }
+        return null;
+      }
+      
+    }
+    ```
+
+
+***
 
 ## concurrency
 
