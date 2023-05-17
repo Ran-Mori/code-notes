@@ -76,7 +76,7 @@
       }
     }
 
-* Lock
+* How to implement a lock by AbstractQueuedSynchronizer
 
   ```java
   class Mutex implements Lock {
@@ -116,7 +116,7 @@
   }
   ```
 
-* fair and unfair 
+* fair lock and unfair lock 
 
   ```java
   //see Semaphore.java
@@ -152,7 +152,121 @@
   }
   ```
 
-  
+* How to implement a ReentrantLock
+
+  ```java
+  public class ReentrantLock implements Lock {
+    abstract static class Sync extends AbstractQueuedSynchronizer {
+      
+      // 上锁
+      final boolean tryLock() {
+        Thread current = Thread.currentThread();
+          int c = getState();
+        	// 因为可重入锁只能允许一个线程拥有，所以直接判断 c==0
+          if (c == 0) {
+            if (compareAndSetState(0, 1)) {
+              // 上锁成功
+              setExclusiveOwnerThread(current);
+              return true;
+            }
+          } else if (getExclusiveOwnerThread() == current) {
+            // 可重入锁，线程一样，就直接获得锁并把state++
+            if (++c < 0) // overflow
+              throw new Error("Maximum lock count exceeded");
+            setState(c); // 因为是同线程操作，所以虽然没CAS，但这里改volatile的值是线程安全的
+            return true;
+          }
+          return false;
+        }
+      }
+    
+    	final boolean tryRelease(int releases) {
+        int c = getState() - releases;
+        // 线程不一样，没可能释放，直接抛异常
+        if (getExclusiveOwnerThread() != Thread.currentThread())
+          throw new IllegalMonitorStateException();
+        boolean free = (c == 0);
+        if (free) {
+          // 这个线程不拥有锁了，把owner线程置空
+          setExclusiveOwnerThread(null);
+        } else {
+          // 还拥有锁，修改state的值。因为是同线程操作，所以虽然没CAS，但这里改volatile的值是线程安全的
+          setState(c);
+        }
+        return free; // 返回此线程是否彻底释放
+      }
+    }
+  }
+  ```
+
+* How to implement ReentrantReadWriteLock
+
+  ```java
+  public class ReentrantReadWriteLock implements ReadWriteLock {
+    
+    private final ReentrantReadWriteLock.ReadLock readerLock;
+    private final ReentrantReadWriteLock.WriteLock writerLock;
+    
+    public ReentrantReadWriteLock(boolean fair) {
+        sync = fair ? new FairSync() : new NonfairSync();
+        readerLock = new ReadLock(this); // 读锁和写锁是分开的
+        writerLock = new WriteLock(this); // 读锁和写锁是分开的
+    }
+    
+    abstract static class Sync extends AbstractQueuedSynchronizer {
+      // state一共32位，高16位用作读锁，低16位用作写锁
+      static final int SHARED_SHIFT   = 16; 
+      static final int SHARED_UNIT    = (1 << SHARED_SHIFT); // 读锁+1时实际加的值
+      static final int MAX_COUNT      = (1 << SHARED_SHIFT) - 1; // 锁最大值，低16位全是1
+      static final int EXCLUSIVE_MASK = (1 << SHARED_SHIFT) - 1; // 用于&，高16位是0，低16位是1
+      
+      static int sharedCount(int c) { return c >>> SHARED_SHIFT; } // 读锁，取高16位
+      static int exclusiveCount(int c) { return c & EXCLUSIVE_MASK; } // 写锁，取低16位
+      
+      // 上写锁
+      boolean tryWriteLock() {
+        Thread current = Thread.currentThread();
+        int c = getState();
+        if (c != 0) { // c != 0 代表有读||有写
+          int w = exclusiveCount(c); // w代表写的数量
+          if (w == 0 || current != getExclusiveOwnerThread())
+            // 此分支代表当前有读，无写，但其他线程尝试上写锁，return false
+            return false;
+          if (w == MAX_COUNT)
+            throw new Error("Maximum lock count exceeded");
+        }
+        // 执行到这里，已经确定了 c == 0 || ownerThread == currentThread
+        // 当前无读无写，或者当前线程无读有写，尝试上第一次写锁或者写锁加一
+        if (!compareAndSetState(c, c + 1)) {
+          return false;
+        } else {
+          setExclusiveOwnerThread(current);
+        	return true;
+        }
+      }
+      
+      // 上读锁
+      final boolean tryReadLock() {
+        Thread current = Thread.currentThread();
+        for (;;) {
+          int c = getState();
+  				// 已有写锁，且不是同一个线程，肯定return false
+          if (exclusiveCount(c) != 0 &&
+            getExclusiveOwnerThread() != current)
+            return false;
+          int r = sharedCount(c);
+          // 读线程数量最大了，抛异常
+          if (r == MAX_COUNT)
+            throw new Error("Maximum lock count exceeded");
+          // 无写锁，同一个线程，则可以继续加读锁
+          compareAndSetState(c, c + SHARED_UNIT)
+          return true;
+        }
+      }
+    }
+  }
+
+***
 
 ## object
 
