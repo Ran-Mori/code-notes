@@ -1,5 +1,357 @@
 # Java
 
+## collection
+
+### inheritance relationship
+
+```bash
+- Iterable
+	- Collection
+		- List
+			- ArrayList
+			- Vector
+			- LinkedList
+			- Stack
+			- CopyOnWriteArrayList
+		- Queue
+			- Deque
+				- ArrayDeque
+				- LinkedBlockingDeque
+				- ConcurrentLinkedDeque
+				- LinkedList
+      - ArrayBlockingQueue
+      - ConcurrentLinkedQueue
+      - SynchronousQueue
+      - PriorityQueue
+      - DelayQueue
+- Map
+	- SynchronizedMap
+	- ConcurrentHashMap
+	- HashMap
+		- LinkedHashMap
+	- Dictionary
+		- Hashtable
+  - SortedMap
+  	- TreeMap
+```
+
+### List
+
+* ArrayList
+
+  * what? - It is a dynamic, resizable array that can grow or shrink at runtime.
+
+  * feature - It is not thread-safe.
+
+  * code
+
+    ```java
+    public class ArrayList<E> extends AbstractList<E> implements List<E> {
+      transient Object[] elementData;
+      
+      public boolean add(E e) {
+        modCount++; // modCount自增，用于抛ConcurrentModifyException
+        if (s == elementData.length)
+            elementData = grow(); // 扩容
+        elementData[s] = e; // 赋值
+        size = s + 1; // size + 1
+        return true;
+      }
+      
+      private Object[] grow(int minCapacity) {
+        // 通过Arrays.copy执行扩容
+        return elementData = Arrays.copyOf(elementData, newCapacity);
+      }
+      
+      private void checkForComodification(final int expectedModCount) {
+        // modCount不符合预期，直接抛并发异常
+        if (modCount != expectedModCount) {
+          throw new ConcurrentModificationException();
+        }
+      }
+    }
+    ```
+
+* Vector
+
+  * It is almost the same as ArrayList, but it is thread-safe
+
+* LinkedList
+
+  ```java
+  public class LinkedList<E> extends AbstractSequentialList<E> implements List<E>, Deque<E> {
+    // 核心成员，双向链表的首尾节点
+    transient Node<E> first;
+    transient Node<E> last;
+    
+    // 双向链表的节点
+    private static class Node<E> {
+      E item;
+      Node<E> next;
+      Node<E> prev;
+  		
+      // 构造方法顺序很好 -> 前中后
+      Node(Node<E> prev, E element, Node<E> next) {
+        this.item = element;
+        this.next = next;
+        this.prev = prev;
+      }
+    }
+    
+    public void addFirst(E e) {
+      final Node<E> f = first;
+      final Node<E> newNode = new Node<>(null, e, f);
+      first = newNode;
+      if (f == null)
+          last = newNode;
+      else
+          f.prev = newNode;
+      size++;
+      modCount++; // 增加modCount用于ConcurrentModificationException
+    }
+  }
+  ```
+
+* Stack
+
+  * feature
+    * signature - `public class Stack<E> extends Vector<E>`
+    * 本质还是使用ArrayList扩容数组的思路实现的
+  * 一般不直接用这个类，而是`Deque<Object> stack/queue = new LinkedList<>();`
+
+* CopyOnWriteArrayList
+
+  * what? - It is a thread-safe variant of the standard `ArrayList`. 
+
+  * code
+
+    ```java
+    public class CopyOnWriteArrayList<E> implements List<E> {
+      // 用一个对象来当同步块的锁
+      final transient Object lock = new Object();
+      // 存放数据的数组，声明为了volatile不缓存
+      private transient volatile Object[] array;
+      
+      public boolean add(E e) {
+        synchronized (lock) { // write的时候直接上锁
+          Object[] es = getArray();
+          int len = es.length;
+          es = Arrays.copyOf(es, len + 1); // 直接十分粗暴的复制一个数组
+          es[len] = e; // 数组末尾赋值
+          setArray(es);
+          return true;
+        }
+      }
+      
+      public E set(int index, E element) {
+        synchronized (lock) {
+          Object[] es = getArray();
+          E oldValue = elementAt(es, index);
+          if (oldValue != element) {
+              es = es.clone(); // 方法基本同上，暴力复制一个数组，然后再改
+              es[index] = element;
+          }
+          // Ensure volatile write semantics even when oldvalue == element
+          setArray(es);
+          return oldValue;
+        }
+      }
+      
+      public E get(int index) {
+          return array[index]; // 读时不加任何锁，直接暴力读
+      }
+    }
+
+### Deque
+
+* ArrayDeque
+
+  * feature
+
+    1. 顾名思义，用数组来实现队列
+    2. 设计思路还挺重要的
+
+  * code
+
+    ```java
+    public class ArrayDeque<E> extends AbstractCollection<E> implements Deque<E> {
+      transient Object[] elements;
+      transient int head; // 当elements不为空时，elements[head]肯定不为空
+      transient int tail; // 无论elements是否为空，elements[tail]肯定为空
+      
+      public ArrayDeque() {
+        elements = new Object[16 + 1]; // 构造函数，初始17个元素
+      }
+      
+      static final int inc(int i, int modulus) {
+        // 自增，如果自增后 == length，说明到头了，index变为最小值0
+        if (++i >= modulus) i = 0;
+        return i;
+      }
+    
+      static final int dec(int i, int modulus) {
+        // 自减，如果自减后 == -1，说明到头了，index变为最大值 length - 1
+        if (--i < 0) i = modulus - 1;
+        return i;
+      }
+      
+      public void addFirst(E e) {
+        final Object[] es = elements;
+        es[head = dec(head, es.length)] = e; // head自减
+        if (head == tail)
+          grow(1); // 扩容
+      }
+      
+      public void addLast(E e) {
+        final Object[] es = elements;
+        es[tail] = e; // tail位肯定没元素，直接赋值
+        if (head == (tail = inc(tail, es.length))) // tail自增
+          grow(1);
+      }
+    }
+    ```
+
+* LinkedBlockingDeque
+
+  ```java
+  public class LinkedBlockingDeque<E> extends AbstractQueue<E> implements BlockingDeque<E> {
+    static final class Node<E> { // 双向链表的节点
+      E item;
+      Node<E> prev;
+      Node<E> next;
+      Node(E x) { item = x; }
+    }
+    
+    transient Node<E> first; // 首尾节点
+    transient Node<E> last;
+    
+    final ReentrantLock lock = new ReentrantLock(); // 可重入锁
+    private final Condition notEmpty = lock.newCondition(); // 用来takeFirst()阻塞用的
+    
+    public boolean offerFirst(E e) {
+      Node<E> node = new Node<E>(e);
+      final ReentrantLock lock = this.lock;
+      lock.lock(); // 可重入锁上锁
+      try {
+        Node<E> f = first;
+        node.next = f;
+        first = node;
+        if (last == null) 
+          last = node; // 空链表情况
+        else
+          f.prev = node;
+        ++count;
+        notEmpty.signal(); // 很重要，当有takeFirst()阻塞时，通过这里唤醒
+        return true;
+      } finally {
+        lock.unlock(); // 解可重入锁
+      }
+    }
+    
+    public E takeFirst() throws InterruptedException {
+      final ReentrantLock lock = this.lock;
+      lock.lock(); // 可重入锁上锁
+      try {
+        E x;
+        while ( (x = unlinkFirst()) == null)
+          notEmpty.await(); // 当链表为空，在这里阻塞住等待唤醒
+        return x;
+      } finally {
+        lock.unlock(); // 解可重入锁
+      }
+    }
+  }
+  ```
+
+* ConcurrentLinkedDeque
+  * 有点复杂，没看懂，总之是用的`volatile + CAS`来确保线程安全
+
+### Queue
+
+* ArrayBlockingQueue
+
+  * 声明 - `public class ArrayBlockingQueue<E> extends AbstractQueue<E> implements BlockingQueue<E>`
+  * 特点
+    1. 使用数组来实现`Queue`，详看`ArrayDeque`
+    2. `dequeue()`时没有元素会阻塞，通过`Condition`来实现，详看`LinkedBlockingDeque`
+
+* ConcurrentLinkedQueue
+
+  * 特点 - 也很复杂，实现方式类似于`ConcurrentLinkedDeque`，总之是用的`volatile + CAS`来确保线程安全
+
+* SynchronousQueue
+
+  * 特点 - 很复杂，使用了一层代理 + `CAS`来实现
+
+* PriorityQueue
+
+  ```java
+  public class PriorityQueue<E> extends AbstractQueue<E> {
+    // the two children of queue[n] are queue[2*n+1] and queue[2*(n+1)]
+    transient Object[] queue; // 看似数组，实际是平衡二叉树
+    private final Comparator<? super E> comparator; // 用于排序的Comparator
+    
+    public boolean offer(E e) {
+      modCount++; // 用于抛 ConcurrentModificationException
+      int i = size;
+      if (i >= queue.length)
+        grow(i + 1); // 容量不够了扩容
+      siftUpUsingComparator(i, e, queue, comparator); // 进行排序
+      size = i + 1;
+      return true;
+    }
+    
+    private static <T> void siftUpUsingComparator(
+          int k, T x, Object[] es, Comparator<? super T> cmp) {
+        while (k > 0) { // 排序算法有点迷惑，看不明白
+          int parent = (k - 1) >>> 1;
+          Object e = es[parent];
+          if (cmp.compare(x, (T) e) >= 0)
+            break;
+          es[k] = e;
+          k = parent;
+        }
+        es[k] = x;
+    }
+  }
+  ```
+
+* DelayQueue
+
+  * annotation - An unbounded blocking queue of Delayed elements, in which an element can only be taken when its **delay has expired**.
+
+  * code
+
+    ```java
+    public class DelayQueue<E extends Delayed> extends AbstractQueue<E> {
+      private final transient ReentrantLock lock = new ReentrantLock(); // 可重入锁
+      private final PriorityQueue<E> q = new PriorityQueue<E>(); // 将队列操作委托给它
+      private final Condition available = lock.newCondition(); // condition
+      
+      public boolean offer(E e) {
+        final ReentrantLock lock = this.lock;
+        lock.lock();
+        try {
+          q.offer(e);
+          if (q.peek() == e) {
+            leader = null;
+            available.signal(); // 插入成功，进行notify()
+          }
+          return true;
+        } finally {
+          lock.unlock();
+        }
+      }
+      
+      public E poll(long timeout, TimeUnit unit) {
+        final ReentrantLock lock = this.lock;
+        lock.lockInterruptibly(); 
+      }
+    }
+    ```
+
+  * implementation
+
 ## concurrency
 
 ### AtomicInteger
