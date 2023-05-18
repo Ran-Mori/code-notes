@@ -73,7 +73,8 @@
 
 * Vector
 
-  * It is almost the same as ArrayList, but it is thread-safe
+  * It is almost the same as ArrayList, but it is thread-safe.
+  * 线程安全的原因是很多方法都带了`synchronized`关键字，就很蠢
 
 * LinkedList
 
@@ -856,6 +857,123 @@
       }
     }
   }
+  ```
+
+### Executor
+
+* ThreadPoolExecutor
+
+  ```java
+  public class ThreadPoolExecutor extends AbstractExecutorService {
+    
+    // 一个32的int，表示两个数值 - workerCount和runState
+    private final AtomicInteger ctl = new AtomicInteger(ctlOf(RUNNING, 0));
+    
+    private static final int RUNNING    = -1 << COUNT_BITS; // 各种状态runState
+    private static final int SHUTDOWN   =  0 << COUNT_BITS;
+    private static final int STOP       =  1 << COUNT_BITS;
+    private static final int TIDYING    =  2 << COUNT_BITS;
+    private static final int TERMINATED =  3 << COUNT_BITS;
+    
+    private static int runStateOf(int c)     { return c & ~COUNT_MASK; } // 从ctl取runState
+    private static int workerCountOf(int c)  { return c & COUNT_MASK; } // 从ctl取workerCount
+    private static int ctlOf(int rs, int wc) { return rs | wc; } 
+    
+    // Core pool size is the minimum number of workers to keep alive (and not allow to time out etc) unless allowCoreThreadTimeOut is set, in which case the minimum is zero.
+    private volatile int corePoolSize; 
+    private volatile int maximumPoolSize; // Maximum pool size.
+    // Timeout in nanoseconds for idle threads waiting for work. Threads use this timeout when there are more than corePoolSize present or if allowCoreThreadTimeOut. Otherwise they wait forever for new work.
+    private volatile long keepAliveTime;
+    
+    // The queue used for holding tasks and handing off to worker threads.
+    private final BlockingQueue<Runnable> workQueue; // 待运行的Runnable，注意用的是Blocking的数据结构
+    // Set containing all worker threads in pool. Accessed only when holding mainLock.
+    private final HashSet<Worker> workers = new HashSet<>(); // 真正的线程池
+    
+    // 将线程给包一层，它继承了AbstractQueuedSynchronizer，说明访问它是互斥的
+    private final class Worker extends AbstractQueuedSynchronizer implements Runnable {
+      final Thread thread; // 对应被包装的线程
+      Runnable firstTask; // 构建时首次的Runnable，真正运行Runnable从队列里面取
+      volatile long completedTasks; // 这个线程总共执行了多少个Runnable
+      
+      Worker(Runnable firstTask) {
+        this.firstTask = firstTask;
+        this.thread = getThreadFactory().newThread(this); // 创建新的线程
+      }
+      
+      
+      public void run() { runWorker(this); } //** Delegates main run loop to outer runWorker. */
+    }
+    
+    public void execute(Runnable command) {
+      int c = ctl.get();
+      if (workerCountOf(c) < corePoolSize) { // 核心线程数量不够，直接创建新线程
+        if (addWorker(command, true))
+          return;
+        c = ctl.get();
+      }
+      if (isRunning(c) && workQueue.offer(command)) { // 正在运行且加入待运行队列成功
+        int recheck = ctl.get();
+        if (!isRunning(recheck) && remove(command))
+          reject(command);
+        else if (workerCountOf(recheck) == 0)
+          addWorker(null, false);
+      }
+      else if (!addWorker(command, false))
+        reject(command);
+    }
+    
+    private boolean addWorker(Runnable firstTask, boolean core) {
+      workerCountOf(c) >= (core ? corePoolSize : maximumPoolSize); // 根据是否core判断数量
+      Worker w = new Worker(firstTask);
+      workers.add(w); // 创建一个worker，然后加到set里面
+      Thread t = w.thread;
+      if (workerAdded) {
+        container.start(t); // 把worker里面的线程取出来直接run
+        workerStarted = true;
+      }
+    }
+    
+    private Runnable getTask() {
+      for (;;) {
+        boolean timed = allowCoreThreadTimeOut || wc > corePoolSize; // 看是否要减少worker数量
+      	if ((wc > maximumPoolSize || (timed && timedOut))
+          && (wc > 1 || workQueue.isEmpty())) {
+          if (compareAndDecrementWorkerCount(c))
+            return null; // 判断应该减少worker时，不阻塞地尝试获取Runnable，而是直接 return null 
+          continue;
+        }
+        compareAndDecrementWorkerCount(c)
+        Runnable r = timed ?
+          workQueue.poll(keepAliveTime, TimeUnit.NANOSECONDS) :
+          workQueue.take(); // 阻塞式地从workQueue中取Runable出来
+        return r;
+      }
+    }
+    
+    final void runWorker(Worker w) {
+      Thread wt = Thread.currentThread(); // 当前线程
+      Runnable task = w.firstTask;
+      w.firstTask = null; // 清空首次的Runable
+      while (task != null || (task = getTask()) != null) { // 从BlockingQueue中取Runable
+        w.lock(); // 此worker(线程)上锁
+        beforeExecute(wt, task); // hook
+        task.run(); // 直接执行Runnable
+  			afterExecute(task, null); // hook
+        w.completedTasks++; // 总数++
+        w.unlock();
+      }
+      processWorkerExit(w, completedAbruptly); // 如果task是空，就退出while了，将此worker删除
+    }
+  }
+  ```
+  
+  * 执行顺序
+    1. `execute()`如果 worker 不够就新建worker，然后把 Runnable给添加进 BlockingQueue
+    2. 上条新建worker完成后，会把worker放进一个set里，并在 `addWorker()` 末尾让 worker 对应的线程直接 start 起来
+    3. 由于 worker 实现了 Runnable 接口，因此直接调用到 run() 方法，而 run() 方法又直接调用 `ThreadPoolExecutor#runWorker(Worker w)` 方法
+    4. 因此可以假设有10个线程都在同时调用 `runWorker(Worker w)`方法
+    5. 因此这个方法里面有一个`while (task != null || (task = getTask()) != null)`，且用了BlockingQueue，因此实现了事件循环。当 task 返回为空时，就自然执行结束，删除worker
 
 ***
 
