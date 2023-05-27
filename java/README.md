@@ -967,13 +967,63 @@
     }
   }
   ```
-  
+
   * 执行顺序
     1. `execute()`如果 worker 不够就新建worker，然后把 Runnable给添加进 BlockingQueue
     2. 上条新建worker完成后，会把worker放进一个set里，并在 `addWorker()` 末尾让 worker 对应的线程直接 start 起来
     3. 由于 worker 实现了 Runnable 接口，因此直接调用到 run() 方法，而 run() 方法又直接调用 `ThreadPoolExecutor#runWorker(Worker w)` 方法
     4. 因此可以假设有10个线程都在同时调用 `runWorker(Worker w)`方法
     5. 因此这个方法里面有一个`while (task != null || (task = getTask()) != null)`，且用了BlockingQueue，因此实现了事件循环。当 task 返回为空时，就自然执行结束，删除worker
+
+### ThreadLocal
+
+* usage example
+
+  * Thread-local variables can be useful when you need to store data that is specific to a particular execution context, such as the current user session or request being processed by a web server. Using `ThreadLocal` can help you avoid synchronization problems that might otherwise occur if multiple threads were accessing the same shared resource at the same time. 
+
+* code
+
+  ```java
+  public class ThreadLocal<T> {
+    
+    static class ThreadLocalMap {
+      Object value;
+      Entry(ThreadLocal<?> k, Object v) {
+        value = v; // key是ThreadLocal，value是Object
+      }
+    }
+    public void set(T value) {
+      // set方法直接第一个参数传currentThread()
+      set(Thread.currentThread(), value);
+    }
+    
+    private void set(Thread t, T value) {
+      ThreadLocalMap map = getMap(t); // 获取Thread的成员变量ThreadLocals
+      if (map != null) {
+        map.set(this, value);
+      } else {
+        createMap(t, value);
+      }
+    }
+    
+    ThreadLocalMap getMap(Thread t) {
+      return t.threadLocals; //Thread类有一个成员变量threadLocals
+    }
+    
+    void createMap(Thread t, T firstValue) {
+      // createMap实际就是给Thread的成员变量new一个对象赋值
+      t.threadLocals = new ThreadLocalMap(this, firstValue);
+    }
+  }
+  ```
+
+* relation
+
+  * 1 thread - 1 ThreadLocalMap
+  * 1 ThreadLocalMap - { n TheadLocal, n value }
+  * 即每一个Thread都有一个map实例，而`ThreadLocal`变量仅仅起到一个`Key`的作用
+
+* example - [see project source code](https://github.com/IzumiSakai-zy/self-private/blob/main/java/concurrency/src/main/java/ThreadLocalTest.java)
 
 ***
 

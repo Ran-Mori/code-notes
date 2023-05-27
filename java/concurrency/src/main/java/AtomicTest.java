@@ -1,7 +1,7 @@
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Main {
-    public static Main object = new Main();
+public class AtomicTest {
+    public static AtomicTest object = new AtomicTest();
 
     public static void main(String[] args) {
         object.testAtomicInteger();
