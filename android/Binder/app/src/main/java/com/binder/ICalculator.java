@@ -1,22 +1,15 @@
-package com.binder.service;
+package com.binder;
 
+//继承了IInterface，因此需要实现`asBinder`方法
 public interface ICalculator extends android.os.IInterface {
-    /**
-     * Default implementation for IMyAdd.
-     */
+    // 默认实现，不用怎么管
+    // 一共三个方法，其中basicTypes()和add()都是在aidl文件中定义的方法，而asBinder()是android.os.IInterface中的方法
     public static class Default implements ICalculator {
-        /**
-         * Demonstrates some basic types that you can use as parameters
-         * and return values in AIDL.
-         */
         @Override
-        public void basicTypes(int anInt, long aLong, boolean aBoolean, float aFloat, double aDouble, java.lang.String aString) throws android.os.RemoteException {
-        }
+        public void basicTypes(int anInt, long aLong, boolean aBoolean, float aFloat, double aDouble, java.lang.String aString) throws android.os.RemoteException {}
 
         @Override
-        public int add(int a, int b) throws android.os.RemoteException {
-            return 0;
-        }
+        public int add(int a, int b) throws android.os.RemoteException { return 0;}
 
         @Override
         public android.os.IBinder asBinder() {
@@ -27,36 +20,42 @@ public interface ICalculator extends android.os.IInterface {
     /**
      * Local-side IPC implementation stub class.
      */
+    // 这个Stub类 = ICalculator + android.os.IInterface + android.os.Binder
     public static abstract class Stub extends android.os.Binder implements ICalculator {
-        private static final java.lang.String DESCRIPTOR = "com.binder.service.IMyAdd";
+        private static final java.lang.String DESCRIPTOR = "com.binder.ICalculator";
 
         /**
          * Construct the stub at attach it to the interface.
          */
+        // 传入DESCRIPTOR作为key
         public Stub() {
             this.attachInterface(this, DESCRIPTOR);
         }
 
         /**
-         * Cast an IBinder object into an com.binder.service.IMyAdd interface,
+         * Cast an IBinder object into an com.binder.ICalculator interface,
          * generating a proxy if needed.
          */
         public static ICalculator asInterface(android.os.IBinder obj) {
             if ((obj == null)) {
                 return null;
             }
+            // 根据DESCRIPTOR key找到
             android.os.IInterface iin = obj.queryLocalInterface(DESCRIPTOR);
             if (((iin != null) && (iin instanceof ICalculator))) {
                 return ((ICalculator) iin);
             }
+            // 返回Proxy
             return new ICalculator.Stub.Proxy(obj);
         }
 
+        // 直接return this
         @Override
         public android.os.IBinder asBinder() {
             return this;
         }
 
+        // 最核心的一个方法
         @Override
         public boolean onTransact(int code, android.os.Parcel data, android.os.Parcel reply, int flags) throws android.os.RemoteException {
             java.lang.String descriptor = DESCRIPTOR;
@@ -100,6 +99,7 @@ public interface ICalculator extends android.os.IInterface {
             }
         }
 
+        // 提供一个java方式的调用
         private static class Proxy implements ICalculator {
             private android.os.IBinder mRemote;
 
@@ -116,10 +116,6 @@ public interface ICalculator extends android.os.IInterface {
                 return DESCRIPTOR;
             }
 
-            /**
-             * Demonstrates some basic types that you can use as parameters
-             * and return values in AIDL.
-             */
             @Override
             public void basicTypes(int anInt, long aLong, boolean aBoolean, float aFloat, double aDouble, java.lang.String aString) throws android.os.RemoteException {
                 android.os.Parcel _data = android.os.Parcel.obtain();
@@ -153,6 +149,7 @@ public interface ICalculator extends android.os.IInterface {
                     _data.writeInterfaceToken(DESCRIPTOR);
                     _data.writeInt(a);
                     _data.writeInt(b);
+                    // 核心调用
                     boolean _status = mRemote.transact(Stub.TRANSACTION_add, _data, _reply, 0);
                     if (!_status && getDefaultImpl() != null) {
                         return getDefaultImpl().add(a, b);
@@ -191,10 +188,7 @@ public interface ICalculator extends android.os.IInterface {
         }
     }
 
-    /**
-     * Demonstrates some basic types that you can use as parameters
-     * and return values in AIDL.
-     */
+    // 以下两个方法是aidl中定义的方法
     public void basicTypes(int anInt, long aLong, boolean aBoolean, float aFloat, double aDouble, java.lang.String aString) throws android.os.RemoteException;
 
     public int add(int a, int b) throws android.os.RemoteException;

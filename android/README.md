@@ -28,6 +28,117 @@
 
 ***
 
+## Binder
+
+### 好文链接
+
+* [Android框架分析系列](https://mr-cao.gitbooks.io/android/content/)
+
+### aidl
+
+* 是什么: 它只是一个简单的工具，因为直接写一个类过于复杂，`aidl`等于是一个中间过程，我们只需在`aidl`中写一个简单的interface，它就会自动为我们生成一个十分复杂的类
+
+* 简单的interface
+
+  ```java
+  interface ICalculator {
+    	void basicTypes(int anInt, long aLong, boolean aBoolean, float aFloat,
+              double aDouble, String aString);
+    	int add(int a, int b)
+  }
+  ```
+
+* 复杂的类 - 内容非常多，一共200多行
+
+  ```java
+  public interface ICalculator extends android.os.IInterface {}
+  ```
+
+### 几者关系
+
+* `binder` - It is the core mechanism of the Android IPC system. It allows different processes to communicate with each other by passing messages.
+* `IBinder` - It is the interface for the `Binder` object. It defines the methods that can be used to communicate with a remote process.
+* `Service` - It is a component in the Android system that runs in the background and provides a set of APIs that can be accessed by other processes.
+* `client` - It is the process that uses a service provided by another process.
+* `server` - It is the process that provides a service that can be used by other processes.
+* `Stub` - It is an object that resides in the process that provides a service, and which can be called by other processes. When a remote process wants to access a service implemented by another process, it sends a request to the stub object. The stub then forwards the request to the actual implementation of the service in the local process.
+* `Proxy` - It is an object that resides in the process that needs to access a remote service, and which acts as a surrogate for the stub object in the remote process. The proxy object provides a local API that looks as if it is calling the remote service directly. When a call is made on the proxy object, it is actually sent to the stub object in the remote process.
+
+### Client与Server
+
+* Client
+  1. Client需要知道Server端Service的全类名
+  2. 知道全类名后，Client直接通过给Intent传入全类名，然后通过`ServiceManager`找到这个Service
+  3. bind上Service后，回返回一个`IBinder`，这实际就是远端的实现
+* Server
+  1. Server侧要将Service启动起来，供Client查询
+  2. Server被绑定时，要将实现的`Binder`返回给客户端
+* Client调Server
+  * Client实际是通过`Proxy`发起的调用，`Proxy`将这个请求转给`Stub.transact()`进行远程调用
+
+### 如何使用
+
+1. 有一个复杂的类`ICalculator.java`
+
+   ```java
+   //继承了IInterface，因此需要实现`asBinder`方法
+   public interface ICalculator extends android.os.IInterface {
+     
+     // 默认实现，不用怎么管
+     // 一共三个方法，其中basicTypes()和add()都是在aidl文件中定义的方法，而asBinder()是android.os.IInterface中的方法
+     public static class Default implements ICalculator {}
+     
+     // Local-side IPC implementation stub class.
+     public static abstract class Stub extends android.os.Binder implements ICalculator {
+       // 实现asBinder()，onTransact()
+       
+       // 将Stub转换成Proxy
+       public static ICalculator asInterface(android.os.IBinder obj) {
+       
+       // 提供一个java方式的调用
+       private static class Proxy implements ICalculator {}
+     }
+   }
+   ```
+
+2. Server端实现一个Service
+
+   ```java
+   public class CalculatorService extends Service {
+   
+     private CalculatorImpl mBinder = new CalculatorImpl();
+   
+     // 返回真正的实现给客户端
+     @Override
+     public IBinder onBind(Intent intent) { return mBinder; }
+   }
+   ```
+
+3. Client端bindService()来获取`IBinder`
+
+   ```java
+   private ICalculator mCalculator;
+   
+   private ServiceConnection mConnection = new ServiceConnection() {
+     @Override
+     public void onServiceConnected(ComponentName name, IBinder service) {
+       // 绑定成功时进行赋值
+       mCalculator = ICalculator.Stub.asInterface(service);
+     }
+   };
+   ```
+
+4. 一定要记得在`AndroidManifest.xml`中进行注册
+
+   ```xml
+   <service
+       android:name="com.binder.service.CalculatorService"
+       android:enabled="true"
+       android:exported="true" />
+   ```
+
+***
+
 ## BitmapDrawableCanvas
 
 ### Bitmap
@@ -673,12 +784,24 @@ startActivity(intent)
 
 ### 自定义一个service
 
-1. 继承`Service()`
-2. 核心实现方法
+1. 写一个Service类，继承`Service()`
+
+2. 在`AndroidManifest.xml`中进行声明
+
+   ```xml
+   <service
+       android:name=".TrackService"
+       android:enabled="true"
+       android:exported="true" />
+   ```
+
+3. 核心实现方法
    * `public abstract IBinder onBind(Intent intent)`
    * `public @StartResult int onStartCommand()`
    * `public boolean onUnbind(Intent intent)`
-3. `context`中`start`和`stop`
+
+4. 在`context`中`startService(Intent service)`和`stopService(Intent name)`
+
    * `public @Nullable ComponentName startService(Intent service)`
    * `public boolean stopService(Intent name)`
 

@@ -1,6 +1,7 @@
-package com.binder.service;
+package com.binder;
 
 import android.os.RemoteException;
+import com.binder.ICalculator;
 
 public class CalculatorImpl extends ICalculator.Stub {
     @Override

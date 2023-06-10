@@ -1,4 +1,4 @@
-package com.binder.service;
+package com.binder;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.util.Log;
 
 public class CalculatorClient {
     private ICalculator mCalculator;
@@ -13,6 +14,7 @@ public class CalculatorClient {
     private ServiceConnection mConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d("IzumiSakai", "server onServiceConnected call");
             mCalculator = ICalculator.Stub.asInterface(service);
         }
 
@@ -23,7 +25,8 @@ public class CalculatorClient {
     };
 
     public void connect(Context context) {
-        Intent intent = new Intent(context, CalculatorService.class);
+        Intent intent = new Intent();
+        intent.setComponent(new ComponentName("com.binder","com.binder.CalculatorService"));
         context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
     }
 
