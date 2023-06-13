@@ -351,6 +351,52 @@ fun dp2px(context: Context, dp: Int): Float =
 
 ***
 
+## CBCompatibility
+
+### compatibility layer
+
+* what it does? - it implements the newer features using the APIs available on the older version. 
+
+* advantages - This allows developers to use the latest features in their apps without having to worry about whether or not the app will work on older devices.
+
+* features
+
+  * The compatibility layer for Android is implemented by the AndroidX libraries themselves, rather than by Android OS or individual applications.
+  * The compatibility code in the AndroidX libraries/Android support libraries often uses if statements and other conditional logic to provide different implementations of the same functionality depending on the version of Android that's running the app.
+
+* example
+
+  ```java
+  public static void requestPermissions(Activity activity, String[] permissions, int requestCode) {
+      if (Build.VERSION.SDK_INT >= 23) {
+          activity.requestPermissions(permissions, requestCode);
+      } else {
+          // Code to handle permissions for older versions of Android
+      }
+  }
+  ```
+
+* history
+
+  * The compatibility layer is implemented as a library, it is not a part of OS. 
+  * The library that is used to implement the compatibility layer is called the **Android Support Library**. But now it's been replaced by **AndroidX Library**
+  * before 2018, you need to add `implementation 'com.android.support:appcompat-v7:28.0.0'`
+  * but now, you just need to add `implementation 'androidx.appcompat:appcompat:1.3.0'`
+
+### what include
+
+* AppCompat, Design, RecyclerView, CardView, PercentLayout
+
+  ```xml
+  androidx.appcompat:appcompat:1.3.0
+  androidx.design:design:1.0.0
+  androidx.recyclerview:recyclerview:1.2.0
+  androidx.cardview:cardview:1.0.0
+  androidx.percentlayout:percentlayout:1.0.0
+  ```
+
+***
+
 ## CBBootReceiver
 
 ### 接收广播
