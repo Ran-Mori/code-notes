@@ -1163,6 +1163,38 @@
 
   * It releases the lock on the object and goes to sleep. Other threads that are trying to acquire the lock on the object will not be blocked. 
 
+* use example
+
+  ```java
+  class SharedPreferencesImpl {
+    private boolean mLoaded = false; // 标记位，是否读取文件已完成
+    
+    public String getString(String key, @Nullable String defValue) {
+      synchronized (mLock) { // 获取对象锁是执行wait()和notify的必要条件
+        while (!mLoaded) {
+          try {
+            mLock.wait(); // 释放对象锁，进入wait; 获取对象锁，执行完wait返回
+          } catch (InterruptedException unused) {}
+        }; 
+        String v = (String)mMap.get(key); // 读取文件已完成，正常读取
+        return v != null ? v : defValue;
+      }
+    }
+    
+   	private void loadFromDisk() { // 真正从文件读内容
+      synchronized (mLock) { // 获取对象锁是执行wait()和notify的必要条件
+        try {
+          // 省略噼里啪啦一系列读文件的操作
+        } catch (Throwable t) {
+          mThrowable = t;
+        } finally {
+          mLock.notifyAll(); // 进行notify
+        }
+      }
+    }
+  }
+  ```
+
 * summarize
 
   * `synchronized()` controsl the lock of the object, while `nofity()、wait()` control the state(sleep, wake) of threads.

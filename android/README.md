@@ -347,7 +347,26 @@ fun dp2px(context: Context, dp: Int): Float =
 ### 接收广播
 
 1. 定义一个`BroadcastReceiver()`
+
 2. `context`中`registerReceiver`
+
+   ```kotlin
+   // 写一个Receiver
+   private val broadReceiver = object : BroadcastReceiver() {
+     override fun onReceive(context: Context?, intent: Intent?) {
+       val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, 0)
+     }
+   }
+   
+   override fun onCreate(savedInstanceState: Bundle?) {
+     super.onCreate(savedInstanceState)
+     setContentView(R.layout.activity_main)
+     // 注册一下监听，声明只监听Intent.ACTION_BATTERY_CHANGED
+     registerReceiver(broadReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+   }
+   ```
+
+   
 
 ***
 
@@ -402,7 +421,18 @@ fun dp2px(context: Context, dp: Int): Float =
 ### 接收广播
 
 1. 定义一个`BroadcastReceiver()`
+
 2. 在`AndroidManifest.xml`中增加一个`<receiver>`标签
+
+   ```xml
+   <receiver android:name="com.cbbootreceiver.MyBootReceiver"
+     android:exported="true">
+     <intent-filter>
+       <!--当收到BOOT_COMPLETED通知时，就会执行Receiver的onReceive()方法-->
+       <action android:name="android.intent.action.BOOT_COMPLETED" />
+     </intent-filter>
+   </receiver>
+   ```
 
 ***
 
@@ -853,7 +883,83 @@ startActivity(intent)
 
 ***
 
-## StrictMode
+## CBSharedPreferences
+
+### 实现原理
+
+1. `ContextImpl.java` 创建文件，将文件转换成`SharedPreferencesImpl.java`
+
+   ```java
+   public SharedPreferences getSharedPreferences(String name, int mode) {
+     File file;
+     synchronized (ContextImpl.class) { // 防多线程，上锁
+       if (mSharedPrefsPaths == null) {
+         mSharedPrefsPaths = new ArrayMap<>(); // 内存友好二分查找的ArrayMap
+       }
+       file = mSharedPrefsPaths.get(name);
+       if (file == null) { // 典型的加缓存思路
+         file = makeFilename(getPreferencesDir(), name + ".xml"); // 核心的新建逻辑
+         mSharedPrefsPaths.put(name, file);
+       }
+     }
+     return getSharedPreferences(file, mode); // 真正的获取
+   }
+   
+   private File getPreferencesDir() { // 获取此应用SP的路径
+       synchronized (mSync) {
+         if (mPreferencesDir == null) {
+           mPreferencesDir = new File(getDataDir(), "shared_prefs");
+         }
+         return ensurePrivateDirExists(f(mPreferencesDir, 0771, -1, null); // 读取文件
+       }
+   }
+   
+   public File getDataDir() { // dataPath是与包名相关联的路径
+     if (isCredentialProtectedStorage()) {
+       res = mPackageInfo.getCredentialProtectedDataDirFile();
+     } else if (isDeviceProtectedStorage()) {
+       res = mPackageInfo.getDeviceProtectedDataDirFile();
+     } else {
+       res = mPackageInfo.getDataDirFile();
+     }
+   }
+                                       
+   static File ensurePrivateDirExists(File file, int mode, int gid, String xattr) {
+     try {
+       Os.mkdir(path, mode); // 系统调用创文件
+       Os.chmod(path, mode); // 系统调用改mode为0771
+       if (gid != -1) {
+           Os.chown(path, -1, gid);
+       }
+     }
+   }
+   
+   public SharedPreferences getSharedPreferences(File file, int mode) {
+     SharedPreferencesImpl sp;
+     synchronized (ContextImpl.class) {
+       sp = new SharedPreferencesImpl(file, mode); // 真正的实现类是SharedPreferencesImpl
+     }
+   }
+   ```
+
+2. `SharedPreferencesImpl.java`
+
+   ```java
+   SharedPreferencesImpl(File file, int mode) {
+     synchronized (mLock) { mLoaded = false; }
+     new Thread("SharedPreferencesImpl-load") {
+       public void run() { loadFromDisk(); } // 直接新开一个线程去读xml文件到内存
+     }.start();
+   }
+   ```
+
+***
+
+## CBStrictMode
+
+### 是什么
+
+* StrictMode is a developer tool which detects things you might be doing by accident and brings them to your attention so you can fix them.
 
 ### 作用
 
@@ -862,6 +968,22 @@ startActivity(intent)
 ### 使用
 
 * `StrictMode.enableDefaults()`
+
+### 示例
+
+* `SharedPreferencesImpl.java`
+
+  ```java
+  private void awaitLoadedLocked() {
+      if (!mLoaded) {
+        // Raise an explicit StrictMode onReadFromDisk for this
+        // thread, since the real read will be in a different
+        // thread and otherwise ignored by StrictMode.
+        // 从磁盘读内容时触发一下StrictMode
+        BlockGuard.getThreadPolicy().onReadFromDisk();
+      }
+  }
+  ```
 
 ***
 
@@ -927,7 +1049,29 @@ startActivity(intent)
 
 ### Assets
 
+* what's for? -> to store raw asset files that will be used by your app, such as fonts, HTML files, JavaScript files, styling files, database files, config files, sound files, and graphic files.
+
+* how to use? -> use apis of `AssetManager.java`
+
+  ```java
+  AssetManager assetManager = getAssets();
+  InputStream inputStream = assetManager.open("file.txt");
+  BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+  StringBuilder builder = new StringBuilder();
+  String line;
+  while ((line = reader.readLine()) != null) {
+      builder.append(line);
+  }
+  String content = builder.toString();
+  inputStream.close();
+  ```
+
+* feature
+
+  * The `assets` directory is a directory for arbitrary files that are not compiled. Asset files that are saved in the assets folder are included as-is in the APK file, without any modification, while the files saved in the `res` directory are processed and compiled into optimized binary formats at build time.
+
 * 位置 -> 在`main`下，和`java`同级
+
 * 注意事项 -> `file:///android_asset/filename.txt`的方式只能访问`assets`下面的资源
 
 ***

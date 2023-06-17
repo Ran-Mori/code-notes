@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 
-class MyBootService: BroadcastReceiver() {
+class MyBootReceiver: BroadcastReceiver() {
 
     private var mContext: Context? = null
 

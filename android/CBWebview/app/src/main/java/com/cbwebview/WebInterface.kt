@@ -5,7 +5,7 @@ import android.webkit.JavascriptInterface
 import android.widget.Toast
 
 /**
- * JNI原来就是这样搞的
+ * JSB原来就是这样搞的
  */
 class WebInterface(private val mContext: Context) {
 
