@@ -217,11 +217,12 @@
 * 是什么 -> 提供了`draw`的方法，即暴露了`draw`的能力
 
 * `draw somethind`的四个必备要素
+  
   1. `A Bitmap to hold the pixels `
   2. `a Canvas to host the draw call`
   3. `a drawing primitive (e.g. Rect, Path, text, Bitmap)`
   4. `a paint`
-
+  
 * 四个要素示例
 
   ```kotlin
@@ -2585,39 +2586,301 @@ startActivity(intent)
 
 ***
 
-## Video
+## SurfaceView
 
-### Surface
+### 核心与相关联的类
 
-* `Handle onto a raw buffer that is being managed by the screen compositor.`
-* 继承了`Parcelable`，因此可以跨进程通信，在`WMS`中传递
-* 它持有了`NativeBuffer`的指针，这个`NativieBuffer`指的是用来保存当前窗口屏幕数据的一个`buffer`
-* `ViewRootImpl`持有了这个对象，即一颗`view tree`，一个`window`，共享一个`Surface`
+* Surface
 
-### SurfaceHolder
+  * `Handle onto a raw buffer that is being managed by the screen compositor.`
 
-* 充当`MVC`模式中的`C`，`Surface`是`M`，`SurfaceView`是`V`
+  * 继承了`Parcelable`，因此可以跨进程通信，在`WMS`中传递
 
-### SurfaceView
+  * 它持有了`NativeBuffer`的指针，这个`NativieBuffer`指的是用来保存当前窗口屏幕数据的一个`buffer`
 
-* 太复杂了，看不懂，先贴个链接 -> [Graphics architecture](https://source.android.com/docs/core/graphics/architecture)
-* `Provides a dedicated drawing surface embedded inside of a view hierarchy.`
-* 是`View`的子类
-* 不与`window`共享`surface`，而是自己持有一个`surface`
-* 为了解决与`window#surface`的重叠问题，`SurfaceView`是在`Z轴`的底部，通过让`window#surface`设置为透明而显示出来
-* `surface`绘制的线程可以自己定，可以不是主线程
+  * `ViewRootImpl`持有了这个对象，即一颗`view tree`，一个`window`，共享一个`Surface`
 
-### TextureView
+  * java代码
 
-* 继承自`View`，它的表现就像一个普通的`View`一样
-* 它没有自己的`Surface`，而是共享`ViewRootImpl`的`Surface`
-* 由于没有自己的`Surface`，它的理论性能比`SurfaceView`低
-* 显示的内容通过`SurfaceTexture`传递
+    ```java
+    public class Surface implements Parcelable {
+      long mNativeObject; // 真正的nativeSurface
+      // 持有Canvas, 但Canvas也只是native的一层包装，持有了一个native指针
+      private final Canvas mCanvas = new CompatibleCanvas(); 
+    }
+    ```
+  
+  
+  * native代码
+  
+    ```c++
+    // 构造函数需要传入一个生产者的引用，和BufferQueue的交互均有这个生产者的引用来完成
+    Surface::Surface( const sp<GraphicBufferProducer>& bufferProducer, bool controlledByApp) : mGraphicBufferProducer(bufferProducer), mGenerationNumber(0)
+    ```
+  
 
-### SurfaceTexture
 
-* `Captures frames from an image stream as an OpenGL ES texture.`
-* 可以把`Surface`生成的图像流，转换为纹理`Texture`，供业务方进一步加工使用
+* SurfaceHolder
+
+  * 充当`MVC`模式中的`C`，`Surface`是`M`，`SurfaceView`是`V`
+
+  * `SurfaceView`持有`Surface`，但设置为`private`，外部通过`SurfaceHolder`这个`C`去控制`Surface`
+
+    ```java
+    public class SurfaceView extends View {
+      final Surface mSurface = new Surface(); // 直接new一个Surface
+      
+      public SurfaceHolder getHolder() { return mSurfaceHolder; }
+      
+      private final SurfaceHolder mSurfaceHolder = new SurfaceHolder() {
+        public boolean isCreating() {
+         // 返回成员变量mIsCreating
+        }
+        
+        public void addCallback(Callback callback) {
+          // 操作成员变量mCallbacks
+        }
+        
+        public Canvas lockCanvas() {
+          // 将操作委托给mSurface
+        }
+        
+        public void unlockCanvasAndPost(Canvas canvas) {
+          // 将操作委托给mSurface
+        }
+        
+        public Surface getSurface() {
+          // 返回成员变量mSurface
+        }
+      }
+    }
+    ```
+
+
+* SurfaceView
+
+  * 太复杂了，看不懂，先贴个链接 -> [Graphics architecture](https://source.android.com/docs/core/graphics/architecture)
+
+  * `Provides a dedicated drawing surface embedded inside of a view hierarchy.`
+
+  * 是`View`的子类
+
+  * 不与`window`共享`surface`，而是自己持有一个`surface`
+
+  * 为了解决与`window#surface`的重叠问题，`SurfaceView`是在`Z轴`的底部，通过让`window#surface`设置为透明而显示出来
+
+  * `surface`绘制的线程可以自己定，可以不是主线程
+
+
+* TextureView
+
+  * 继承自`View`，它的表现就像一个普通的`View`一样
+
+  * 它没有自己的`Surface`，而是共享`ViewRootImpl`的`Surface`
+
+  * 由于没有自己的`Surface`，它的理论性能比`SurfaceView`低
+
+  * 显示的内容通过`SurfaceTexture`传递
+
+
+* SurfaceTexture
+
+  * `Captures frames from an image stream as an OpenGL ES texture.`
+
+  * 可以把`Surface`生成的图像流，转换为纹理`Texture`，供业务方进一步加工使用
+
+
+### 挖孔论
+
+* 代码实现
+
+  ```java
+  // SurfaceView.java
+  private OnPreDrawListener mDrawListener = () -> {
+      updateSurface(); // onPreDraw()时调用updateSurface()
+  };
+  
+  private OnScrollChangedListener mScrollChangedListener = this::updateSurface; // onScroll时也调updateSurface()
+  
+  protected void onAttachedToWindow() { // onAttachToWindow()时调用
+    // 监听ViewRootImpl对应的Surface发生改变
+    getViewRootImpl().addSurfaceChangedCallback(this);
+    mAttachedToWindow = true; // 一个标记位
+    // 核心实现，开始请求划出一片区域为透明
+    mParent.requestTransparentRegion(SurfaceView.this);
+    // onPredraw()与onScroll()时调用updateSurface()
+    observer.addOnScrollChangedListener(mScrollChangedListener);
+    observer.addOnPreDrawListener(mDrawListener);
+  }
+  
+  // ViewGoup.java
+  public void requestTransparentRegion(View child) {
+    if (child != null) {
+      child.mPrivateFlags |= View.PFLAG_REQUEST_TRANSPARENT_REGIONS; // 标记位
+      if (mParent != null) {
+        mParent.requestTransparentRegion(this); // 一直向上调用，最后调到ViewRootImpl
+      }
+    }
+  }
+  
+  // ViewRootImpl.java
+  private void performTraversals() {
+    if (View.PFLAG_REQUEST_TRANSPARENT_REGIONS) != 0) {
+      params.format = PixelFormat.TRANSLUCENT; // format设置为半透明
+    }
+    performLayout(lp, mWidth, mHeight); // 执行完了layout
+    if (View.PFLAG_REQUEST_TRANSPARENT_REGIONS) != 0) {
+      mTransparentRegion.set(x, x, x, x) // 规定透明区域的范围
+      // 此方法View, ViewGroup, SurfaceView都有实现，会将对应的View的区域设置成透明
+      host.gatherTransparentRegion(mTransparentRegion);
+    }
+  }
+  ```
+
+### updateSurface()
+
+* 调用时机
+
+  * `onPreDraw()`,`onSrcoll()`,  `ViewRootSurface#surfaceCreated()`, `ViewRootSurface#surfaceDestroyed()`, `setVisibility()`, `setFrame()`
+
+* 干了什么
+
+  ```java
+  private BLASTBufferQueue mBlastBufferQueue; // 一个队列
+  
+  protected void updateSurface() {
+    // 定义一大堆以changed结尾的变量
+    final boolean visibleChanged;
+    final boolean alphaChanged;
+    final boolean creating;
+    final boolean sizeChanged;
+    
+    if(hasChanged) {
+      getLocationInWindow(mLocation); // 获取此SurfaceView在window中的位置
+      
+      mWindowSpaceLeft = mLocation[0]; // 记录位置在mScreenRect成员变量内
+      mWindowSpaceTop = mLocation[1];
+      mScreenRect.left = mWindowSpaceLeft;
+      mScreenRect.top = mWindowSpaceTop;
+      mScreenRect.right = mWindowSpaceLeft + getWidth();
+      mScreenRect.bottom = mWindowSpaceTop + getHeight();    
+    }
+    
+    if (creating) {
+      createBlastSurfaceControls(viewRoot, name, surfaceUpdateTransaction); // 创建 BLASTBufferQueue
+    }
+    
+    // 这一次ViewRootImpl#performDraw()之前是否要增加一些操作(比如draw这个SurfaceView)
+    boolean shouldSyncBuffer = redrawNeeded && viewRoot.wasRelayoutRequested()
+    if (shouldSyncBuffer) {
+      // 队列加一个消息
+      mBlastBufferQueue.syncNextTransaction( false, onTransactionReady);
+    }
+  
+    // 里面进行了一大堆操作，最终返回size是否变化
+    final boolean realSizeChanged = performSurfaceTransaction(viewRoot, ...);
+  
+    copySurface(creating, sizeChanged); // 尝试重建Surface
+  
+    if (!mSurfaceCreated && (surfaceChanged || visibleChanged)) {
+      for (SurfaceHolder.Callback c : getSurfaceCallbacks()) {
+        c.surfaceCreated(mSurfaceHolder); // 调用SurfaceCreated()
+      }
+    }
+    
+    if (creating || formatChanged || sizeChanged || hintChanged) {
+      for (SurfaceHolder.Callback c : getSurfaceCallbacks()) {
+        c.surfaceChanged(mSurfaceHolder, mFormat, myWidth, myHeight); // 调用SurfaceChanged()
+      }
+    }
+    
+    if (redrawNeeded) { // 需要重绘
+      callbacks = getSurfaceCallbacks();
+      if (shouldSyncBuffer) { // 有额外的操作
+        handleSyncBufferCallback(callbacks, syncBufferTransactionCallback);
+      } else { // 无额外的操作
+        handleSyncNoBuffer(callbacks);
+      }
+    }
+  }
+  
+  // 这个类感觉自己实现了一个同步机制
+  private static class SyncBufferTransactionCallback {
+    private final CountDownLatch mCountDownLatch = new CountDownLatch(1);
+    private Transaction mTransaction;
+  
+    Transaction waitForTransaction() {
+     	mCountDownLatch.await();
+      return mTransaction;
+    }
+  
+    void onTransactionReady(Transaction t) {
+      mTransaction = t;
+      mCountDownLatch.countDown();
+    }
+  }
+  
+  private void copySurface(boolean surfaceControlCreated, boolean bufferSizeChanged) {
+    // 非必要不执行
+    if (!surfaceControlCreated && !needsWorkaround) { return; }
+    if (surfaceControlCreated) {
+      mSurface.copyFrom(mBlastBufferQueue); // surface只是一个java对象，copyFrom重建只需要改下nativeObject的指针就好了
+    }
+    if (needsWorkaround && mBlastBufferQueue != null) {
+      mSurface.transferFrom(mBlastBufferQueue.createSurfaceWithHandle());
+    }
+  }
+  
+  private void handleSyncBufferCallback(Callback[]， SyncBufferTransactionCallback) {
+    getViewRootImpl().addToSync(syncBufferCallback -> {
+      mBlastBufferQueue.stopContinuousSyncTransaction(); // 队列先暂停一下
+      t = syncBufferTransactionCallback.waitForTransaction(); // 用自己实现的同步机制获取一个Transaction
+      syncBufferCallback.onBufferReady(t); // 调用onBufferReady()准备绘制
+      mParent.requestTransparentRegion(SurfaceView.this); // 完成绘制后的操作
+      invalidate(); // 完成Surface绘制要求更新UI
+    })
+  }
+  ```
+
+
+### BufferQueue
+
+* 好文链接 - [深入浅出Android BufferQueue](https://zhuanlan.zhihu.com/p/62813895)
+
+* 模型 - 生产者消费者模式
+
+  * 生产者 - 产生图像源数据，如`Surface`，截图时的`SurfaceFlinger`
+  * 消费之 - 消费图像源数据，如`SurfaceFlinger`，截图时另外的一个`BufferQueue`
+
+* BufferState
+
+  * FREE - 所有权归`BufferQueue`
+  * DEQUEUED - 所有权归生产者
+  * QUEUED - 已填充数据，但未被消费者获取，所有权归`BufferQueue`
+  * ACQUIRED - 所有权归消费者
+
+* `Surface`生产者
+
+  ```c++
+  // 获取一个Buffer来draw
+  static jlong nativeLockCanvas() {
+  	//1. 通过Surface::lock方法，获取一个合适的Buffer
+    status_t err = surface->lock(&outBuffer, dirtyRectPtr);
+    //2. 构造一个Bitmap，地址指向步骤1获取的Buffer的地址，这样在这个Bitmap上绘制的内容，直接绘制到了GraphicBuffer
+    SkBitmap bitmap;
+    //将GraphicBuffer构造成一个Bitmap，设置给Canvas
+    Canvas* nativeCanvas = GraphicsJNI::getNativeCanvas(env, canvasObj);
+    // canvas始终要调用一次setBitmap()，无论是java调还是native调
+    nativeCanvas->setBitmap(bitmap);
+  }
+  
+  static void nativeUnlockCanvasAndPost() {
+  	// detach the canvas from the surface
+  	Canvas* nativeCanvas = GraphicsJNI::getNativeCanvas(env, canvasObj);
+  	nativeCanvas->setBitmap(SkBitmap()); // 设置bitmap为另一个对象即与buffer解绑
+    err = queueBuffer(mLockedBuffer.get(), fd); // 直接将数据放入BufferQueue
+  }
+  ```
 
 ***
 
@@ -2634,6 +2897,14 @@ startActivity(intent)
 * 设置`translate`后只重新`draw`，不会重新进行`measure, layout`
 * 是一种低代价改变`View`位置的参数，因为不用`measure、layout`，常用来做动画
 * 设置后重新调用`requestLayout`依然不会使`translate`失效
+
+***
+
+## Video
+
+### VideoView使用
+
+* 自己看代码吧
 
 ***
 
