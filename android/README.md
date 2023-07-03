@@ -1143,7 +1143,7 @@ startActivity(intent)
 
 * 顺序解析
 
-  1. line 4 和 line 8是并发执行的，因为 line 2新启动了一个协程，新的协程和其他代码块之间是并发的
+  1. line 4 和 line 8是并发执行的，因为 line 4新启动了一个协程，新的协程和其他代码块之间是并发的
   2. line 5 和 line 6是串行的，因为它们在同一个协程的代码块内，同一个协程的代码是串行的
   3. line 5 和 line 8几乎是同时执行的，打印`System.currentTimeMillis()`会发现两者时间一样或者悬殊`1ms`
   4. line 5是不占用线程资源的，因为delay是一个suspend方法，它在这里是会自动挂起释放线程的
