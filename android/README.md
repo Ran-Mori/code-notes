@@ -3040,3 +3040,166 @@ class MainActivity : AppCompatActivity() {
 * 用户: 暂时没有想到
 
 ***
+
+## WindowManager
+
+### 好文链接
+
+* [Android绘制流程 —— View、Window、SurfaceFlinger](https://juejin.cn/post/6899010578145411085)
+
+### 添加View
+
+* 前置条件 -> 已获取`android.settings.action.MANAGE_OVERLAY_PERMISSION`权限
+
+* 代码示例
+
+  ```kotlin
+  val view: View = LayoutInflater.from(this).inflate(R.layout.my_custom_view, null)
+  val params = WindowManager.LayoutParams(
+    WindowManager.LayoutParams.WRAP_CONTENT,
+    WindowManager.LayoutParams.WRAP_CONTENT,
+    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+    PixelFormat.TRANSLUCENT
+  )
+  windowManager.addView(view, params)
+  ```
+
+### setContentView流程
+
+1. 收到`EXECUTE_TRANSACTION`159类型的message，调用到创建window
+
+   ```java
+   public final class ActivityThread {
+     class H extends Handler {
+       public void handleMessage(Message msg) {
+         switch (msg.what) {
+           case EXECUTE_TRANSACTION:
+             ClientTransaction transaction = (ClientTransaction) msg.obj;
+             // 执行这个transaction，虽然不知道这个transaction到底是啥，只知道和启动Activity有关
+             mTransactionExecutor.execute(transaction);
+         }
+       }
+     }
+   }
+   
+   class Activity {
+     private Window mWindow;
+     final void attach(...) {
+       // 创建window
+       mWindow = new PhoneWindow(this, window, activityConfigCallback);
+     }
+   }
+   ```
+
+2. `PhoneWindow`创建`DecorView`，并设置`DecorView`的布局
+
+   ```java
+   public class PhoneWindow extends Window {
+     private DecorView mDecor; // 持有DecorView
+     ViewGroup mContentParent;
+     
+     protected DecorView generateDecor(int featureId) {
+       // new一个DecorView
+       return new DecorView(context, featureId, this, getAttributes());
+     }
+     
+     private void installDecor() {
+       mDecor = generateDecor(-1);
+       mContentParent = generateLayout(mDecor);
+     }
+     
+     protected ViewGroup generateLayout(DecorView decor) {
+       int layoutResource = R.layout.screen_simple;
+       // 将R.layout.screen_simple传给DecorView
+       mDecor.onResourcesLoaded(mLayoutInflater, layoutResource);
+       // 从DecorView中找到了R.id.content，如下xml所示
+       ViewGroup contentParent = (ViewGroup)findViewById(ID_ANDROID_CONTENT); // 从DecorView
+       return contentParent;
+     }
+   }
+   ```
+
+   ```xml
+   <!--screen_simple.xml-->
+   <LinearLayout>
+   	<ViewStub 
+       android:id="@+id/action_mode_bar_stub"
+       android:inflatedId="@+id/action_mode_bar"
+       android:layout="@layout/action_mode_bar" />
+   	<FrameLayout
+        android:id="@android:id/content" /> <!--id为content-->
+   </LinearLayout>
+   ```
+
+3. `DecorView`设置View
+
+   ```java
+   public class DecorView extends FrameLayout {
+     // 第二步会调到
+     void onResourcesLoaded(LayoutInflater inflater, int layoutResource) {
+       // 构造这个View，布局如上xml所示
+       final View root = inflater.inflate(layoutResource, null);
+       // 直接作为DecorView的根子View
+       addView(root, 0, new ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT));
+       mContentRoot = (ViewGroup) root;
+     }
+   }
+   ```
+
+4. `AppCompatDelegateImpl`强行魔改`R.id.content`
+
+   ```java
+   class AppCompatDelegateImpl extends AppCompatDelegate {
+     ViewGroup subDecor = null;
+     
+     private ViewGroup createSubDecor() {
+       // 直接构造一个View，布局如下所示
+       subDecor = (ViewGroup) LayoutInflater.from(themedContext).inflate(R.layout.abc_screen_toolbar, null);
+     	// 从新构建的subDecor里找到一个View作为contentView
+       FrameLayout contentView = subDecor.findViewById(R.id.action_bar_activity_content);
+       // 获取DecorView的R.id.content
+       ViewGroup windowContentView = (ViewGroup) mWindow.findViewById(android.R.id.content);
+       while (windowContentView.getChildCount() > 0) {
+         // 将R.id.content内的View全部移动到新的contentView中
+         final View child = windowContentView.getChildAt(0);
+         windowContentView.removeViewAt(0);
+         contentView.addView(child);
+       }
+       windowContentView.setId(View.NO_ID); // 将原来的R.id.content设置为NO_ID
+       contentView.setId(android.R.id.content); // 将新的contentView强设成R.id.content
+     }
+   }
+   ```
+
+   ```xml
+   <android.support.v7.widget.ActionBarOverlayLayout
+           android:id="@+id/decor_content_parent">
+       <include layout="@layout/abc_screen_content_include"/>
+       <android.support.v7.widget.ActionBarContainer
+               android:id="@+id/action_bar_container">
+           <android.support.v7.widget.Toolbar
+                   android:id="@+id/action_bar"/>
+           <android.support.v7.widget.ActionBarContextView
+                   android:id="@+id/action_context_bar"/>
+       </android.support.v7.widget.ActionBarContainer>
+   </android.support.v7.widget.ActionBarOverlayLayout>
+   ```
+
+5. 执行`setContentView()`
+
+   ```java
+   class AppCompatDelegateImpl {
+     ViewGroup subDecor = null;
+     public void setContentView(int resId) {
+       // 找到强行改后的R.id.content
+       ViewGroup contentParent = mSubDecor.findViewById(android.R.id.content);
+       // 清空然后强加
+       contentParent.removeAllViews();
+       LayoutInflater.from(mContext).inflate(resId, contentParent);
+     }
+   }
+   ```
+
+   
+
