@@ -2882,6 +2882,12 @@ startActivity(intent)
   }
   ```
 
+### SurfaceFlinger
+
+* SurfaceFlinger是一个开机就自动启动的进程
+
+  ![结构图片](https://img2018.cnblogs.com/blog/821933/201907/821933-20190730111306166-2128331293.png)
+
 ***
 
 ## ViewCoordinate
