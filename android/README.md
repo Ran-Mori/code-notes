@@ -3201,5 +3201,55 @@ class MainActivity : AppCompatActivity() {
    }
    ```
 
+
+### 添加View进Window
+
+1. Activity#onResume()
+
+   ```java
+   public final class ActivityThread {
+     public void handleResumeActivity() {
+       View decor = r.window.getDecorView(); // 获取DecorView
+       decor.setVisibility(View.INVISIBLE); // 设置为不可见
+       ViewManager wm = a.getWindowManager(); // 从Activity或者wm
+       WindowManager.LayoutParams l = r.window.getAttributes(); // 获取LayoutParams
+       wm.addView(decor, l); // 尝试把整个DecorView添加进Window
+       
+       r.activity.makeVisible(); //添加结束后最后设置为可见 
+     }
+   }
+   ```
+
+2. WindowManagerGloabal创建ViewRootImpl
+
+   ```java
+   public final class WindowManagerGlobal {
+     // 上面的addView最终会调用到这个方法，view是DecorView
+     public void addView(View view, ViewGroup.LayoutParams params) {
+       ViewRootImpl root = new ViewRootImpl(view.getContext(), display);
+       // 把DecorView和ViewRootImpl都存一下
+       mViews.add(view); 
+       mRoots.add(root);
+       // 调用ViewRootImpl的setView() 方法
+       root.setView(view, wparams, panelParentView, userId);
+     }
+   }
+   ```
+
+3. ViewRootImpl#setView
+
+   ```java
+   public final class ViewRootImpl {
+     View mView;
+     // 上面会调到这个方法
+     public void setView(View view, WindowManager.LayoutParams attrs) {
+       mView = view; // 把DecorView赋值给mView
+       requestLayout(); // 调一下requestLayout()
+       // 跨进程Binder代理调用，通过系统进程的WindowManagerService建立连接
+       res = mWindowSession.addToDisplayAsUser(mWindow, mWindowAttributes)
+     }
+   }
+   ```
+
    
 
