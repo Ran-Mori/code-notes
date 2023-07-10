@@ -25,10 +25,10 @@ class MainActivity : AppCompatActivity() {
         textView = findViewById(R.id.text_view)
 
         textView?.setOnClickListener {
-//            startActivity(Intent(this, SecondActivity::class.java))
+            startActivity(Intent(this, SecondActivity::class.java))
 
             // 测试singleTop
-            startActivity(Intent(this, MainActivity::class.java))
+//            startActivity(Intent(this, MainActivity::class.java))
         }
     }
 
