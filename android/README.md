@@ -137,6 +137,34 @@
        android:exported="true" />
    ```
 
+### 特点
+
+1. `asInterface()`方法，如果当前进程有就返回当前进程的，就不用跨进程通信了；如果当前进程没有，才返回一个Proxy来跨进程通信
+
+   ```java
+   public static ICalculator asInterface(android.os.IBinder obj) {
+     if ((obj == null)) {
+       return null;
+     }
+     // 根据DESCRIPTOR key找到
+     android.os.IInterface iin = obj.queryLocalInterface(DESCRIPTOR);
+     if (((iin != null) && (iin instanceof ICalculator))) {
+       return ((ICalculator) iin);
+     }
+     // 返回Proxy
+     return new ICalculator.Stub.Proxy(obj);
+   }
+   ```
+
+2. 运行过程
+
+   1. 客户端发起方法调用，传入`code`，将请求写入inParcel
+   2. 执行RPC调用，客户端发起调用的线程被挂起
+   3. 服务端`onTransact()`实现处执行，处理完成后结果写入outParcel
+   4. RPC返回，客户端恢复被挂起线程执行
+
+3. `onTRansact()`方法会运行在服务端的一个线程池中，因此即使它很耗时，也应该用同步的方式去实现；但RPC返回耗时久，客户端不能放在UI线程执行
+
 ***
 
 ## BitmapDrawableCanvas
@@ -953,6 +981,10 @@ startActivity(intent)
      }.start();
    }
    ```
+
+### 特点
+
+* 理论上sp实现原理是读写文件，可以用于IPC。但实际上最好别用，因为系统对它的读写有一定的缓存的策略，在内存中存在一个副本，所以多进程它是读写不可靠的。
 
 ***
 
