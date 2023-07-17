@@ -1570,11 +1570,54 @@
   }
   ```
 
+* Observable#debounce
+
+  ```java
+  public final class ObservableDebounceTimed<T> extends AbstractObservableWithUpstream<T, T> {
+  	final class DebounceTimedObserver<T> {
+      Disposable timer;
+      volatile long index; // 用于只取最后一个
+      boolean done; // 用于onComplete直接返回
+      
+      public void onNext(T t) {
+        long idx = index + 1;
+        index = idx; // index自增
+        DebounceEmitter<T> de = new DebounceEmitter<T>(t, idx, this); // 包成一个Runnable
+        timer = de;
+        d = worker.schedule(de, timeout, unit); // 调度这个Runnable
+      }
+      
+      public void onComplete() {
+        if (de != null) {
+          de.run(); // 直接拿runnable来run
+        }
+      }
+      
+      void emit(long idx, T t, DebounceEmitter<T> emitter) {
+        if (idx == index) { // 保证只取最后一个
+          downstream.onNext(t); // 传给downstream
+          emitter.dispose();
+        }
+      }
+    }
+    
+    static final class DebounceEmitter<T> {
+      public void run() { // runnable的实现
+        if (once.compareAndSet(false, true)) {
+          parent.emit(idx, value, this); 
+        }
+      }
+    }
+  }
+  ```
+
+  
+
 * 总结
 
   1. 设计模式很像Fresco的consumer与producer
-  2. subscibe顺序 -> **从最右到最左**
-  3. onNext顺序 -> **从最左到最右**
+  2. subscibe顺序 -> **自底向上，持有upstream**
+  3. onNext顺序 -> **自顶向下，持有downstream**
 
 ### Disposable
 
