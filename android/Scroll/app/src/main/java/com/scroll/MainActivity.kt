@@ -1,4 +1,4 @@
-package com.scrollview
+package com.scroll
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
