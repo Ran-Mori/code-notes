@@ -3,6 +3,10 @@ import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 
 fun main() {
+    testCreate()
+}
+
+private fun testCreate() {
     val disposable: Disposable = Observable.create {
         it.onNext("onNext")
         it.onComplete()

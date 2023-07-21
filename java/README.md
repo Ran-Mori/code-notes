@@ -1535,8 +1535,64 @@
       // 将observer给包了一层，然后在调用作为构造参数传进来的源source.subscibe()
       source.subscribe(new ObserveOnObserver<>(observer, w));
     }
+    
+    final class ObserveOnObserver<T> extends BasicIntQueueDisposable<T> {
+      final Observer<? super T> downstream; // 下游的Observer
+      Disposable upstream; // 上游的Observable
+      final Scheduler.Worker worker; // 调度器
+      
+      @Override
+      public void onNext(T t) {
+        worker.schedule(this); // 执行自己实现的Runnable
+      }
+      
+      @Override
+      public void run() {
+        T v = q.poll(); // 里面有一堆复杂的 for(;;) 从队列取的逻辑，这里省略了
+        downstream.onNext(); // 下游的Observer开始执行
+      }
+    }
   }
   ```
+
+  * 结论：`observeOn()`下面写的所有操作符的`onNext`都在它指定的线程执行
+
+* Observable#subscibeOn()
+
+  ```java
+  class ObservableSubscribeOn<T> {
+    public ObservableSubscribeOn(ObservableSource<T> source, Scheduler scheduler) {
+      // 父类持有源source
+      super(source);
+      this.scheduler = scheduler;
+    }
+    
+    @Override
+    public void subscribeActual(final Observer<? super T> observer) {
+      final SubscribeOnObserver<T> parent = new SubscribeOnObserver<>(observer); //observer包一层
+      observer.onSubscribe(parent); // 调用observer#onSubscibe()
+      // scheduler开始调度SubscribeTask这个任务
+      parent.setDisposable(scheduler.scheduleDirect(new SubscribeTask(parent)));
+    }
+    
+    class SubscribeTask implements Runnable {
+      private final SubscribeOnObserver<T> parent;
+      @Override
+      public void run() {
+        source.subscribe(parent); // 核心的一行，等于upstream.subscibe(wrapObserver)在指定线程执行
+      }
+    }
+    
+    final class SubscribeOnObserver<T> extends AtomicReference<Disposable> {
+      final Observer<? super T> downstream;
+      public void onNext(T t) { downstream.onNext(t); } // onNext原封不动往下传递
+    }
+  }
+  ```
+
+  * 结论
+    1. subscibeOn() 指定了`upstream#subscribe() `执行，由于最顶的Observable的onNext就是在`subscribe()`内执行，因此如果不做其他线程切换的话，所有的操作符回调都会在指定的线程执行；因此一般在`Observable#subscibe({}, {})`的上一行加`.observeOn(AndroidSchedulers.mainThread())`来切线程
+    2. subscibeOn()内的Observer就没做啥事，一个字 -> `透传`
 
 * Observable#map()
 
@@ -1610,8 +1666,6 @@
     }
   }
   ```
-
-  
 
 * 总结
 
