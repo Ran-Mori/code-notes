@@ -2276,8 +2276,8 @@ startActivity(intent)
    ```
 
    ```kotlin
-   //ViewGroup版本
-   fun dispatchTouchEvent(val ev:MotionEvent){
+   // ViewGroup简单版本
+   public boolean dispatchTouchEvent(MotionEvent event) {
      var consume = false
      if (allowIntercept() && onInterceptTouchEvent(ev)) {
        consume = onTouchEvent(ev)
@@ -2285,6 +2285,58 @@ startActivity(intent)
        comsume = child.dispatchTouchEvent(ev)
      }
      return consume;
+   }
+   
+   // ViewGroup复杂版本
+   public boolean dispatchTouchEvent(MotionEvent event) {
+     if (actionMasked == MotionEvent.ACTION_DOWN) {
+       mFirstTouchTarget = null; // down时置空mFirstTouchTarget
+       mGroupFlags &= ~FLAG_DISALLOW_INTERCEPT; // down事件即使child让parent不拦截，parent也强制设为可拦截
+     }
+     
+     final boolean intercepted; // 标志位是否拦截
+     if (actionMasked == MotionEvent.ACTION_DOWN || mFirstTouchTarget != null) { // 只有当down事件，或者已经将down事件分给了child的时候才有拦截的机会
+       final boolean disallowIntercept = (mGroupFlags & FLAG_DISALLOW_INTERCEPT) != 0; // 注意这个变量在上面可能会强制置为false
+       if (!disallowIntercept) {
+         intercepted = onInterceptTouchEvent(ev); // 看下是否要拦截
+       } else {
+         intercepted = false; // child让不要拦截，就不拦截
+       }
+     } else {
+       intercepted = true; // 非down事件，之前的down事件又没有child消费，只有自己含泪消费拦截掉
+     }
+     
+     if (!canceled && !intercepted) {
+       if (actionMasked == MotionEvent.ACTION_DOWN) {
+         if (newTouchTarget == null && childrenCount != 0) {
+           for (int i = childrenCount - 1; i >= 0; i--) {
+             // 事件响应要在对应的区域内
+             if (!child.canReceivePointerEvents()
+                 || !isTransformedTouchPointInView(x, y, child, null)) {
+               continue;
+             }
+             // 当某个child的dispatchTouchEvent()返回true，代表child消费掉down事件
+             if (dispatchTransformedTouchEvent(ev, false, child)) {
+               // 赋值给mFirstTouchTarget
+               newTouchTarget = addTouchTarget(child, idBitsToAssign);
+               break;
+             }
+           }
+         }
+       }
+     }
+     
+     if (mFirstTouchTarget == null) {
+       // 没有child响应事件，由parent#onTouchEvent()响应
+       handled = dispatchTransformedTouchEvent(ev, canceled, null)
+     } else {
+       // mFirstTouchTarget不为空时，直接让这个target来消费
+       if (dispatchTransformedTouchEvent(ev, cancelChild,
+               target.child, target.pointerIdBits)) {
+         handled = true;
+       }
+     }
+     return handled;
    }
    ```
 
@@ -2551,6 +2603,117 @@ startActivity(intent)
        }
      }
      ```
+
+### 点击移开
+
+* parent不拦截时
+
+  ```java
+  // View#onTouchEvent()
+  public boolean onTouchEvent(MotionEvent event) {
+    switch (action) {
+      case MotionEvent.ACTION_UP:
+        // 当最后的up事件在child范围内时，PFLAG_PRESSED生效，最后执行点击
+        // 当最后的up事件在child范围外时，PFLAG_PRESSED不生效，最后的点击不会执行
+        if ((mPrivateFlags & PFLAG_PRESSED) != 0) {
+          performClickInternal(); // 单击实现
+        }
+    }
+  }
+  ```
+
+* parent拦截`MotionEvent.ACTION_UP`事件时，`MotionEvent.ACTION_UP`事件会变`MotionEvent.CANCEL`
+
+  ```bash
+  MotionTextView.onTouchEvent call start, action: CANCEL
+  MotionTextView.onTouchEvent call end, action: CANCEL, result = true
+  ```
+
+  ```java
+  // ViewGroup#dispatchTouchEvent
+  public boolean dispatchTouchEvent(MotionEvent ev) {
+    if (mFirstTouchTarget == null) {
+      // parent#onTouchEvent()处理的情况
+    } else {
+      // 如果拦截了，cancelChild置为true
+      final boolean cancelChild = intercepted;
+      // 将cancelChild作为第二个参数传下去
+      if (dispatchTransformedTouchEvent(ev, cancelChild,
+              target.child, target.pointerIdBits)) {
+        handled = true;
+      }
+    }
+    if (canceled) {
+      // 如果事件转成cancel，则将mFirstTouchTarget置空，下一个事件来时分发按正常分发
+      resetTouchState();
+    }
+  }
+  
+  // ViewGroup#dispatchTransformedTouchEvent
+  private boolean dispatchTransformedTouchEvent(MotionEvent event, boolean cancel) {
+    final int oldAction = event.getAction();
+    if (cancel || oldAction == MotionEvent.ACTION_CANCEL) {
+      // 如果cacel了，强设action为MotionEvent.ACTION_CANCEL
+      event.setAction(MotionEvent.ACTION_CANCEL);
+      handled = child.dispatchTouchEvent(event);
+      return handled;
+    }
+  }
+  ```
+
+### 滑动冲突
+
+* parent拦截法
+
+  ```kotlin
+  class InnerInterceptViewGroup {
+    private var needIntercept: Boolean = false
+  
+    override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
+      return when (ev?.action) {
+        MotionEvent.ACTION_DOWN -> false
+        MotionEvent.ACTION_MOVE -> needIntercept
+        MotionEvent.ACTION_UP -> false
+        else -> false
+      }
+    }
+  }
+  ```
+
+  * down事件一定不能拦截，否则child的点击等业务统统失效，不要担心`down`给了child就所有事件给child响应，可以看看上面的`点击移开`
+  * move事件就根据需要，如果判断用户是在左右滑动切ViewPager，就拦截，用于执行左右切换的操作
+  * up事件就无所必要了。当move事件一旦被拦截，事件分发就和child没关系了，因此它会收到一个cancel事件；如果move事件都没被拦截，那就正常返回false默认值
+
+* child拦截法
+
+  ```kotlin
+  // child#dispatchTouchEvent()
+  override fun dispatchTouchEvent(event: MotionEvent?): Boolean {
+    when (event?.action) {
+      // 当down给child时，置为true让parent先没有机会调用onInterceptTouchEvent()
+      // 能否调用onInterceptTouchEvent()完全取决于下面的move事件是否放行
+      MotionEvent.ACTION_DOWN -> {
+        parent?.requestDisallowInterceptTouchEvent(true)
+      }
+  
+      MotionEvent.ACTION_MOVE -> {
+        if (needIntercept) {
+          // 该处理滑动冲突时，让parent下面的时候有机会拦截
+          parent?.requestDisallowInterceptTouchEvent(false)
+        }
+      }
+      // up能传到这里，说明上面的move从来没有让拦截过，正常处理
+      MotionEvent.ACTION_UP -> {}
+    }
+    return super.dispatchTouchEvent(event)
+  }
+  
+  // parent#onIntercepTouchEvent()
+  override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
+    // down不拦截，其他事件是否拦截听child通知
+    return ev?.action != MotionEvent.ACTION_DOWN
+  }
+  ```
 
 ***
 
