@@ -1371,7 +1371,7 @@
   * It is another class in Java that allows you to create references to objects that may be garbage collected.
   * A `SoftReference` is similar to a `WeakReference`. 
 
-* 和WeakRefrence的区别
+* difference between WeakRefrence
 
   * In contrast to a weak reference, which is always a candidate for garbage collection, a `SoftReference` can stay in memory longer as long as the JVM still has enough memory. If the JVM starts to run out of memory, the `SoftReference` objects may be garbage collected to free up memory.
   * The main difference between `WeakReference` and `SoftReference` is the likelihood of being garbage collected.
