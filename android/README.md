@@ -2729,6 +2729,56 @@ startActivity(intent)
 
 ***
 
+## notification
+
+### PendingIntent
+
+* 源码
+
+  ```java
+  public final class PendingIntent implements Parcelable {
+    private final IIntentSender mTarget;
+    
+    public static PendingIntent getActivityAsUser() {
+      IIntentSender target = ActivityManager.getService().getIntentSenderWithFeature();
+      eturn target != null ? new PendingIntent(target) : null;
+    }
+    
+    public PendingIntent(IIntentSender target) {
+      mTarget = Objects.requireNonNull(target);
+    }
+    
+    public PendingIntent(IBinder target, Object cookie) {
+      mTarget = IIntentSender.Stub.asInterface(target);
+      mWhitelistToken = (IBinder)cookie;
+    }
+  }
+  ```
+
+  ```java
+  // IIntentSender.aidl
+  interface IIntentSender {
+      void send(int code, in Intent intent, String resolvedType, in IBinder whitelistToken,
+              IIntentReceiver finishedReceiver, String requiredPermission, in Bundle options);
+  }
+  ```
+
+  * PendingIntent 仅仅是持有`IIntentSender`引用而已
+  * 实际的`IItentSender`实例是由操作系统控制的
+  * `IIntentSender`是通过`AMS`获取的
+
+* 注释
+
+  * A PendingIntent itself is simply a reference to a token maintained by the system describing the original data used to retrieve it.
+  * If the creating application later re-retrieves the same kind of PendingIntent， it will receive a PendingIntent representing the same token if that is still valid, and can thus call cancel to remove it.
+
+* [stack over flow](https://stackoverflow.com/questions/9583230/what-is-the-purpose-of-intentsender)
+
+  * Instances of `IIntentSender` can not be made directly, but rather must be created from an existing `PendingIntent` with `PendingIntent.getIntentSender()`.
+  * As for a `PendingIntent`, it's basically a token that you give to another application which allows that application to use your app's permissions to execute a specific piece of your app's code.
+
+***
+
 ## rxjava
 
 ### flatMap使用
