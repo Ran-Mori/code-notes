@@ -2936,6 +2936,22 @@ startActivity(intent)
 
 ***
 
+## retrofit
+
+### path与query
+
+* 示例
+
+  ```kotlin
+  @GET("/posts/{id}")
+  fun getRespById(@Path("id") id: Int): Observable<DataResponse>
+  ```
+
+  ```kotlin
+  @GET("/comments")
+  fun getComment(@Query("postId") postId: Int): Observable<List<DataComment>>
+  ```
+
 ## rxjava
 
 ### flatMap使用
