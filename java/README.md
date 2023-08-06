@@ -1027,6 +1027,188 @@
 
 ***
 
+## invokedynamic
+
+### reference
+
+* [Java 8 Lambdas - A Peek Under the Hood](https://www.infoq.com/articles/Java-8-Lambdas-A-Peek-Under-the-Hood/)
+* [Method handles and lambda metafactory](https://wttech.blog/blog/2020/method-handles-and-lambda-metafactory/)
+
+### structure and content
+
+* structure
+
+  ```
+  - main
+  	- test
+  		- AICTest.java
+  		- LambdaTest.java
+    - view
+    	- OnClickListener.java
+    	- View.java
+  ```
+
+* content
+
+  ```java
+  // AICTest.java
+  public class AICTest {
+    public AICTest() {
+      View view = new View();
+      view.setOnClickListener(new OnClickListener() {
+        @Override
+        public void onClick(View view) {
+          System.out.println("onClick call, view hashcode = " + view.hashCode());
+        }
+      });
+    }
+  }
+  ```
+
+  ```javascript
+  public class LambdaTest {
+    public LambdaTest() {
+      View view = new View();
+      view.setOnClickListener(v -> System.out.println("onClick call, view hashcode = " + v.hashCode()));
+    }
+  }
+  ```
+
+### anonymous inner classes
+
+* 执行`javac main/test/AICTest.java`
+
+  ```
+  - main
+  	- test
+  		- AICTest.class
+  		- AICTest$1.class
+  ```
+
+* `AICTest$1.class`反编译
+
+  ```java
+  class AICTest$1 implements OnClickListener {
+    AICTest$1(AICTest var1) {}
+    
+    public void onClick(View var1) {
+      System.out.println("onClick call, view hashcode = " + var1.hashCode());
+    }
+  }
+  ```
+
+* 执行`javap -p -v main.test.AICTest`
+
+  ```java
+  public class AICTest {
+    public AICTest();
+      Code:
+        13: new           #10 // class main/test/AICTest$1
+        18: invokespecial #12 // Method main/test/AICTest$1."<init>":(Lmain/test/AICTest;)V
+  }
+  ```
+
+  * 实际实现就是new AICTest$1，然后执行它的构造方法
+
+* disadvantages
+
+  * the compiler generates a new class file for each anonymous inner class. The filename usually looks like ClassName$1.
+  * each class file needs to be loaded and verified before being used, which impacts the startup performance of the application. The loading may be an expensive operation, including disk I/O and decompressing the JAR file itself.
+
+### lambda
+
+* 执行`javac main/test/LambdaTest.java `
+
+  ```
+  - main
+  	- test
+  		- LambdaTest.class
+  ```
+
+* 执行`javap -c LambdaTest`
+
+  ```java
+  public class LambdaTest {
+    public LambdaTest();
+      Code:
+        13: invokedynamic #10,  0 // InvokeDynamic #0:onClick:()Lmain/view/OnClickListener;
+          
+    private static void lambda$new$0(main.view.View);
+    	Code:
+    		0: getstatic     #18      // Field java/lang/System.out:Ljava/io/PrintStream;
+        3: aload_0
+        4: invokevirtual #24      // Method java/lang/Object.hashCode:()I
+        7: invokedynamic #28,  0  // InvokeDynamic #1:makeConcatWithConstants:(I)Ljava/lang/String;
+        12: invokevirtual #32     // Method java/io/PrintStream.println:(Ljava/lang/String;)V
+  }
+  
+  BootstrapMethods:
+  	0: #47 REF_invokeStatic java/lang/invoke/LambdaMetafactory.metafactory
+      Method arguments:
+  			#54 (Lmain/view/View;)V
+        #55 REF_invokeStatic main/test/LambdaTest.lambda$new$0:(Lmain/view/View;)V
+        #54 (Lmain/view/View;)V
+  	1: #58 REF_invokeStatic java/lang/invoke/StringConcatFactory.makeConcatWithConstants
+      Method arguments:
+  			#64 onClick call, view hashcode = \u0001
+  ```
+
+  * 执行`invokedynamic`指令，跳到执行`LambdaMetafactory.metafactory`获取`CallSite`对象
+
+* 运行时
+
+  ```java
+  public static CallSite metafactory(MethodHandles.Lookup caller,
+                                     String interfaceMethodName,
+                                     MethodType factoryType,
+                                     MethodType interfaceMethodType,
+                                     MethodHandle implementation,
+                                     MethodType dynamicMethodType)
+  ```
+
+  * `caller` -> `main.test.LamdaTest`
+  * `interfaceMethodName` -> `onClick`
+  * `factoryType` -> `()OnClickListener`
+  * `interfaceMethodType` -> `View(void)`
+  * `implementation` -> `MethodHandle(View)void`
+  * `dynamicMethodType` -> `View(void)`
+
+### example
+
+* lambda
+
+  ```java
+  String toBeTrimmed = " text with spaces ";
+  Supplier<String> lambda = toBeTrimmed::trim;
+  ```
+
+* real
+
+  ````java
+  String toBeTrimmed = " text with spaces ";
+  Method reflectionMethod = String.class.getMethod("trim");
+  Lookup lookup = MethodHandles.lookup();
+  MethodHandle handle = lookup.unreflect(reflectionMethod);
+  CallSite callSite = LambdaMetafactory.metafactory(
+    // method handle lookup
+    lookup,
+    // name of the method defined in the target functional interface
+    "get",
+    // type to be implemented and captured objects
+    // in this case the String instance to be trimmed is captured
+    MethodType.methodType(Supplier.class, String.class),
+    // type erasure, Supplier will return an Object
+    MethodType.methodType(Object.class),
+    // method handle to transform
+    handle,
+    // Supplier method real signature (reified)
+    // trim accepts no parameters and returns String
+    MethodType.methodType(String.class));
+  Supplier<String> lambda = (Supplier<String>) callSite.getTarget().bindTo(toBeTrimmed).invoke();
+  ````
+
+***
+
 ## object
 
 ### getClass
