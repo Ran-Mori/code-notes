@@ -1,4 +1,4 @@
-package com.retrofit
+package com.retrofit.resp
 
 import com.google.gson.annotations.SerializedName
 

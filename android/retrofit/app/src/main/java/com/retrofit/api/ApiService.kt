@@ -1,6 +1,8 @@
-package com.retrofit
+package com.retrofit.api
 
 
+import com.retrofit.resp.DataComment
+import com.retrofit.resp.DataResponse
 import io.reactivex.rxjava3.core.Observable
 import retrofit2.http.GET
 import retrofit2.http.Path

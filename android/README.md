@@ -2952,6 +2952,93 @@ startActivity(intent)
   fun getComment(@Query("postId") postId: Int): Observable<List<DataComment>>
   ```
 
+### basic
+
+* Converter
+
+  ```java
+  // Convert objects to and from their representation in HTTP.
+  // such as GsonConverter
+  public interface Converter<F, T> {
+    T convert(F value);
+  }
+  ```
+
+* CallAdapter
+
+  ```java
+  // Adapts a Call with response type R into the type of T.
+  // such as RxJava3CallAdapter
+  public interface CallAdapter<R, T> {
+    Type responseType();
+    T adapt(Call<R> call);
+  }
+  ```
+
+### process
+
+1. generate a proxy class
+
+   ```java
+   // service -> com.retrofit.ApiService
+   public <T> T create(final Class<T> service) {
+     // loader -> dalvik.system.PathClassLoader
+     // interfaces -> [com.retrofit.ApiService]
+     return (T)
+       Proxy.newProxyInstance(
+           service.getClassLoader(),
+           new Class<?>[] {service},
+           new InvocationHandler() {
+   					public Object invoke(Object proxy, Method method, @Nullable Object[] args) {
+               return loadServiceMethod(method).invoke(args);
+             }
+           }
+       );
+     // className -> $Proxy2
+   }
+   ```
+
+2. find the right platform
+
+   ```java
+   class Platform {
+     private static Platform findPlatform() {
+       // 直接根据虚拟机来判断是不是安卓
+       return "Dalvik".equals(System.getProperty("java.vm.name"))
+         ? new Android()
+         : new Platform(true);
+     }
+     
+     static final class Android extends Platform {
+       public Executor defaultCallbackExecutor() {
+         return new MainThreadExecutor();
+       }
+     }
+     
+     static final class MainThreadExecutor implements Executor {
+       private final Handler handler = new Handler(Looper.getMainLooper());
+       // 一个Executor的实现居然就是单纯地向MainLooper抛东西
+       public void execute(Runnable r) {
+         handler.post(r);
+       }
+     }
+   }
+   ```
+
+3. ready to call `InvocationHandler#invoke()`
+
+   ```java
+   // 只看method
+   // 
+   public Object invoke(Object proxy, Method method, @Nullable Object[] args) {}
+   ```
+
+   ```java
+   
+   ```
+
+   
+
 ## rxjava
 
 ### flatMap使用
