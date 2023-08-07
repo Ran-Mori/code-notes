@@ -1027,6 +1027,148 @@
 
 ***
 
+## dynamic-proxy
+
+### version control
+
+* all the analysis below is based on `jdk 20`
+
+  ```
+  openjdk version "20.0.1" 2023-04-18
+  OpenJDK Runtime Environment Homebrew (build 20.0.1)
+  OpenJDK 64-Bit Server VM Homebrew (build 20.0.1, mixed mode, sharing)
+  ```
+
+### comments
+
+* how to use
+
+  ```java
+  InvocationHandler handler = new MyInvocationHandler(...);
+  Foo f = (Foo) Proxy.newProxyInstance(Foo.class.getClassLoader(), 
+                                       new Class<?>[] { Foo.class },
+                                       handler);
+  
+  public static Object newProxyInstance(ClassLoader loader,
+                                            Class<?>[] interfaces,
+                                            InvocationHandler h)
+  ```
+
+* explain
+
+  ```
+  A proxy class is a class created at runtime that implements a specified list of interfaces, known as proxy interfaces. A proxy instance is an instance of a proxy class. Each proxy instance has an associated invocation handler object, which implements the interface InvocationHandler. A method invocation on a proxy instance through one of its proxy interfaces will be dispatched to the invoke method of the instance's invocation handler, passing the proxy instance, a java.lang.reflect.Method object identifying the method that was invoked, and an array of type Object containing the arguments. The invocation handler processes the encoded method invocation as appropriate and the result that it returns will be returned as the result of the method invocation on the proxy instance.
+  ```
+
+* key feature
+
+  1. created at runtime
+  2. use asm to generate a class
+  3. all methods are dispatched to `InvocationHandler#invoke(Object proxy, Method method, Object[] args)`
+
+### process
+
+* input parameters
+
+  ```java
+  /**
+  	* loader -> jdk.internal.loader.ClassLoaders$AppClassLoader
+  	* interfaces -> [main.IConsumer]
+  	* h -> ConsumerProxy
+  **/
+  public static Object newProxyInstance(ClassLoader loader,
+                                        Class<?>[] interfaces,
+                                        InvocationHandler h)
+  ```
+
+* get proxy class name
+
+  ```java
+  private static Class<?> defineProxyClass() {
+    String proxyName = context.packageName().isEmpty()
+      ? proxyClassNamePrefix + num
+      : context.packageName() + "." + proxyClassNamePrefix + num;
+    // proxyName -> jdk.proxy1.$Proxy0
+  }
+  ```
+
+* use asm to generate a class
+
+  ```java
+  final class ProxyGenerator extends ClassWriter {
+    
+    private final ClassLoader loader; //jdk.internal.loader.ClassLoaders$AppClassLoader
+    private final String className; // jdk.proxy1.$Proxy0
+    private final List<Class<?>> interfaces; //[main.IConsumer]
+    private int proxyMethodCount; //3
+    
+    
+    private byte[] generateClassFile() {
+      addProxyMethod(hashCodeMethod);
+      addProxyMethod(equalsMethod);
+      addProxyMethod(toStringMethod);
+      
+      generateConstructor();
+      generateStaticInitializer();
+      generateLookupAccessor();
+      return toByteArray(); // 生成字节码
+    }
+  }
+  ```
+
+  ```java
+  public class ClassWriter extends ClassVisitor {
+    private final SymbolTable symbolTable; // class字节码的符号表
+    private int accessFlags; // class字节码的accessFlag
+    
+    public byte[] toByteArray() {
+      symbolTable.addConstantUtf8(Constants.NEST_MEMBERS);
+      ByteVector result = new ByteVector(size);
+      AnnotationWriter.putAnnotations();
+      return result.data;
+    }
+  }
+  ```
+
+* get constructor of generated class
+
+  ```java
+  public static Object newProxyInstance() {
+    // cons -> public jdk.proxy1.$Proxy0(java.lang.reflect.InvocationHandler)
+    Constructor<?> cons = getProxyConstructor(caller, loader, interfaces);
+  }
+  ```
+
+* use constructor to newinstance and return
+
+  ```java
+  private static Object newProxyInstance(Class<?> caller,
+                                         Constructor<?> cons,
+                                         InvocationHandler h) {
+    return cons.newInstance(new Object[]{h});
+  }
+  ```
+
+* run method
+
+  ```java
+  public class ConsumerProxy implements InvocationHandler {
+    /**
+    	* proxy -> jdk.proxy1.$Proxy0
+    	* method -> public abstract void main.IConsumer.buy()
+    	* args -> null
+    **/
+    public Object invoke(Object proxy, Method method, Object[] args) {
+      before();
+      Object returnValue = method.invoke(consumer, args);
+      after();
+      return returnValue;
+    }
+  }
+  ```
+
+  
+
 ## invokedynamic
 
 ### reference
