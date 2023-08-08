@@ -10,12 +10,27 @@ import java.lang.reflect.UndeclaredThrowableException;
 import io.reactivex.rxjava3.core.Observable;
 
 public final class $Proxy0 extends Proxy implements ApiService {
-    private static Method m1;
-    private static Method m4;
-    private static Method m3;
-    private static Method m2;
-    private static Method m5;
-    private static Method m0;
+    private static final Method m0;
+    private static final Method m1;
+    private static final Method m4;
+    private static final Method m3;
+    private static final Method m2;
+    private static final Method m5;
+
+    static {
+        try {
+            m0 = Class.forName("java.lang.Object").getMethod("hashCode");
+            m1 = Class.forName("java.lang.Object").getMethod("equals", Class.forName("java.lang.Object"));
+            m2 = Class.forName("java.lang.Object").getMethod("toString");
+            m3 = Class.forName("com.retrofit.api.ApiService").getMethod("getRespById", int.class);
+            m4 = Class.forName("com.retrofit.api.ApiService").getMethod("getAllResp");
+            m5 = Class.forName("com.retrofit.api.ApiService").getMethod("getComment", int.class);
+        } catch (NoSuchMethodException var2) {
+            throw new NoSuchMethodError(var2.getMessage());
+        } catch (ClassNotFoundException var3) {
+            throw new NoClassDefFoundError(var3.getMessage());
+        }
+    }
 
     public $Proxy0(InvocationHandler var1) {
         super(var1);
@@ -84,21 +99,6 @@ public final class $Proxy0 extends Proxy implements ApiService {
             throw var2;
         } catch (Throwable var3) {
             throw new UndeclaredThrowableException(var3);
-        }
-    }
-
-    static {
-        try {
-            m0 = Class.forName("java.lang.Object").getMethod("hashCode");
-            m1 = Class.forName("java.lang.Object").getMethod("equals", Class.forName("java.lang.Object"));
-            m2 = Class.forName("java.lang.Object").getMethod("toString");
-            m3 = Class.forName("com.retrofit.api.ApiService").getMethod("getRespById", int.class);
-            m4 = Class.forName("com.retrofit.api.ApiService").getMethod("getAllResp");
-            m5 = Class.forName("com.retrofit.api.ApiService").getMethod("getComment", int.class);
-        } catch (NoSuchMethodException var2) {
-            throw new NoSuchMethodError(var2.getMessage());
-        } catch (ClassNotFoundException var3) {
-            throw new NoClassDefFoundError(var3.getMessage());
         }
     }
 }

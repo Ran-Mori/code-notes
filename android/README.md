@@ -2958,6 +2958,7 @@ startActivity(intent)
 
   ```java
   // Convert objects to and from their representation in HTTP.
+  // okhttp3.ResponseBody -> SomeOtherType
   // such as GsonConverter
   public interface Converter<F, T> {
     T convert(F value);
@@ -2968,6 +2969,7 @@ startActivity(intent)
 
   ```java
   // Adapts a Call with response type R into the type of T.
+  // retrofit2.Call -> SomeOtherType
   // such as RxJava3CallAdapter
   public interface CallAdapter<R, T> {
     Type responseType();
@@ -3028,13 +3030,106 @@ startActivity(intent)
 3. ready to call `InvocationHandler#invoke()`
 
    ```java
-   // 只看method
-   // 
-   public Object invoke(Object proxy, Method method, @Nullable Object[] args) {}
+   public final class $Proxy0 extends Proxy implements ApiService {
+     private static final Method m3;
+     static {
+       // method是从这里来的
+       m3 = Class.forName("com.retrofit.api.ApiService").getMethod("getRespById", int.class);
+     }
+   }
+   
+   // method相关关键参数
+   // annotations -> [@retrofit2.http.GET(value=/comments)]
+   // parameterTypes -> [class(int)]
+   // parameterAnnotationsArray -> [@retrofit2.http.Query(encoded=false, value=postId)]
    ```
 
+4. parse method annotation
+
    ```java
+   // RequestFactory.java
+   private void parseMethodAnnotation(Annotation annotation) {
+   	if (annotation instanceof GET) {
+       parseHttpMethodAndPath("GET", ((GET) annotation).value(), false);
+     }
+   }
    
+   // parse method annotation
+   // httpMethod -> GET
+   // value -> /comments
+   private void parseHttpMethodAndPath(String httpMethod, String value, boolean hasBody) {
+     int question = value.indexOf('?');
+   }
+   
+   // parse parameter annotation
+   // parameterType -> Class(int)
+   // annotations -> [@retrofit2.http.Query(encoded=false, value=postId)]
+   private ParameterHandler<?> parseParameter(Type parameterType, @Nullable Annotation[] annotations)
+   ```
+
+5. create RequestFactory
+
+   ```java
+   final class RequestFactory {
+     private final Method method; // public abstract io.reactivex.rxjava3.core.Observable com.retrofit.api.ApiService.getComment(int)
+     private final HttpUrl baseUrl; // https://jsonplaceholder.typicode.com/
+     final String httpMethod; // GET
+     private final String relativeUrl; // /comments
+     private final ParameterHandler<?>[] parameterHandlers; // [ParameterHandler$Query]
+     final boolean isKotlinSuspendFunction; // false
+   }
+   ```
+
+6. find CallAdapter
+
+   ```java
+   class Retrofit {
+     // [Rxjava3CallAdapterFactory, CompeletableFutureCallAdapterFactory, DefaultCallAdapterFactory]
+     final List<CallAdapter.Factory> callAdapterFactories;
+     
+     // Retrofit.java
+     // returnType -> io.reactivex.rxjava3.core.Observable<java.util.List<com.retrofit.resp.DataComment>>
+     public CallAdapter<?, ?> nextCallAdapter(Type returnType) {}
+   }
+   
+   final class RxJava3CallAdapter<R> implements CallAdapter<R, Object> {
+     private final Type responseType; // java.util.List<com.retrofit.resp.DataComment>
+   }
+   ```
+
+7. find ResponseConvertor
+
+   ```java
+   class Retrofit {
+     // [BuiltinConverters, GsonConverterFactory, OptionalConverterFactory]
+     final List<Converter.Factory> converterFactories;
+     
+     // Retrofit.java
+     // returnType -> java.util.List<com.retrofit.resp.DataComment>
+     public <T> Converter<ResponseBody, T> nextResponseBodyConverter(Type returnType) {}
+   }
+   
+   public final class GsonConverterFactory extends Converter.Factory {
+     // type -> java.util.List<com.retrofit.resp.DataComment>
+     public Converter<ResponseBody, ?> responseBodyConverter(Type type) {
+       TypeAdapter<?> adapter = gson.getAdapter(TypeToken.get(type));
+       return new GsonResponseBodyConverter<>(gson, adapter); // 返回GsonConverter
+     }
+   }
+   // 其他的几个Converter都返回null不会走到
+   ```
+
+8. get HttpServiceMethod
+
+   ```java
+   HttpServiceMethod<ResponseT, ReturnT> parseAnnotations() {
+     // omit the process of finding RespConverter and CallConverter
+     if (!isKotlinSuspendFunction) { // adapt for kotlin coroutine
+       return new CallAdapted<>()
+     } else {
+       return new new SuspendForBody<>()
+     }
+   }
    ```
 
    
