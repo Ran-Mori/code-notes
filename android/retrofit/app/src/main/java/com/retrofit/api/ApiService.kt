@@ -17,7 +17,4 @@ interface ApiService {
 
     @GET("/comments")
     fun getComment(@Query("postId") postId: Int): Observable<List<DataComment>>
-
-    @GET("/comments")
-    suspend fun getCommend(@Query("postId") postId: Int): List<DataComment>
 }
