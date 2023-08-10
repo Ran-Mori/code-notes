@@ -2969,7 +2969,7 @@ startActivity(intent)
 
   ```java
   // Adapts a Call with response type R into the type of T.
-  // retrofit2.Call -> SomeOtherType
+  // retrofit2.Call -> Observable
   // such as RxJava3CallAdapter
   public interface CallAdapter<R, T> {
     Type responseType();
@@ -3064,7 +3064,12 @@ startActivity(intent)
    // parse parameter annotation
    // parameterType -> Class(int)
    // annotations -> [@retrofit2.http.Query(encoded=false, value=postId)]
-   private ParameterHandler<?> parseParameter(Type parameterType, @Nullable Annotation[] annotations)
+   private ParameterHandler<?> parseParameter(Type parameterType, @Nullable Annotation[] annotations) {
+     // set variable to be true if the last param is kotlin.coroutine.Continuation
+     if (Utils.getRawType(parameterType) == Continuation.class) {
+       isKotlinSuspendFunction = true;
+     }
+   }
    ```
 
 5. create RequestFactory
@@ -3125,14 +3130,85 @@ startActivity(intent)
    HttpServiceMethod<ResponseT, ReturnT> parseAnnotations() {
      // omit the process of finding RespConverter and CallConverter
      if (!isKotlinSuspendFunction) { // adapt for kotlin coroutine
-       return new CallAdapted<>()
+       return new CallAdapted<>() // it will return here if not kotlin suspend
      } else {
        return new new SuspendForBody<>()
      }
    }
    ```
 
-   
+9. run `CallAdapter.adapt()`
+
+   ```java
+   final class RxJava3CallAdapter<R> implements CallAdapter<R, Object> {
+     private final Type responseType; // java.util.List<com.retrofit.resp.DataComment>
+     
+     // call -> retrofit2.OkHttpCall implements retrofit2.Call
+     // R -> Integer
+     public Object adapt(Call<R> call) {
+       Observable<Response<R>> responseObservable = new CallEnqueueObservable<>(call);
+       Observable<?> observable = new BodyObservable<>(responseObservable);
+       return RxJavaPlugins.onAssembly(observable);
+     }
+   }
+   ```
+
+10. make a call by okhttp
+
+    ```java
+    class CallEnqueueObservable<T> extends Observable<Response<T>> {
+      protected void subscribeActual(Observer<? super Response<T>> observer) {
+        CallCallback<T> callback = new CallCallback<>(call, observer); // observer是向下的回调
+        call.enqueue(callback); // 调用retrofit2.OkHttpCall#enqueue(retrofit2.Callback)
+      }
+    }
+    
+    
+    final class OkHttpCall<T> implements Call<T> {
+      public void enqueue(final Callback<T> callback) {
+        call.enqueue(
+        	new okhttp3.Callback() {
+            public void onResponse() {
+              response = parseResponse(rawResponse); //parse the returned response
+              callback.onResponse(OkHttpCall.this, response); // call callBack
+            }
+          }
+        )
+      }
+    }
+    ```
+
+11. convert resp
+
+    ```java
+    Response<T> parseResponse(okhttp3.Response rawResponse) {
+      // responseConverter -> retrofit2.converter.gson.GsonResponseBodyConverter
+      T body = responseConverter.convert(catchingBody);
+    }
+    ```
+
+12. final
+
+    ```java
+    class CallEnqueueObservable<T> extends Observable<Response<T>> {
+      final class CallCallback<T> {
+        public void onResponse(Call<T> call, Response<T> response) {
+          // onNext()
+          observer.onNext(response);
+        }
+      }
+    }
+    ```
+
+### extra knowledge
+
+1. factory pattern
+2. adapter pattern
+3. dynamic proxy
+4. static proxy
+5. httpmethod cache
+
+***
 
 ## rxjava
 

@@ -12,9 +12,9 @@ import io.reactivex.rxjava3.core.Observable;
 public final class $Proxy0 extends Proxy implements ApiService {
     private static final Method m0;
     private static final Method m1;
-    private static final Method m4;
-    private static final Method m3;
     private static final Method m2;
+    private static final Method m3;
+    private static final Method m4;
     private static final Method m5;
 
     static {
@@ -94,7 +94,7 @@ public final class $Proxy0 extends Proxy implements ApiService {
     @Override
     public Observable getComment(int postId) {
         try {
-            return (Observable)super.h.invoke(this, m5, (Object[])null);
+            return (Observable)super.h.invoke(this, m5, new Object[]{postId});
         } catch (RuntimeException | Error var2) {
             throw var2;
         } catch (Throwable var3) {
