@@ -2932,7 +2932,141 @@ startActivity(intent)
   }
   ```
 
+
+***
+
+## okhttp
+
+### Request
+
+* An HTTP request.
+
+  ```kotlin
+  class Request internal constructor(
+    @get:JvmName("url") val url: HttpUrl,
+    @get:JvmName("method") val method: String,
+    @get:JvmName("headers") val headers: Headers,
+    @get:JvmName("body") val body: RequestBody?,
+    internal val tags: Map<Class<*>, Any>
+  )
+  ```
+
+### OkHttpClients
+
+* what is? -> Factory for calls, which can be used to send HTTP requests and read their responses.
+
+* features
+
+  1. OkHttpClients Should Be Shared. 
+  2. each client holds its own connection pool and thread pools. Reusing connections and threads reduces latency and saves memory.
+
+* code
+
+  ```kotlin
+  open class OkHttpClient internal constructor(
+    builder: Builder
+  ) {
+    // specifies the thread of execution
+    val dispatcher: Dispatcher
+    // HTTP requests that share the same Address may share a Connection.
+    val connectionPool: ConnectionPool
+    // observe the full span of each call
+    val interceptors: List<Interceptor>
+    // Listener for metrics events. Extend this class to monitor the quantity, size, and duration of your application's HTTP calls.
+    val eventListenerFactory: EventListener.Factory
+    // Caches HTTP and HTTPS responses to the filesystem so they may be reused, saving time and bandwidth.
+    val cache: Cache?
+    // This class represents a proxy setting, typically a type (http, socks) and a socket address. 
+    val proxy: Proxy?
+  }
+  ```
+
+### Dispatcher
+
+* comment -> Policy on when async requests are executed. Each dispatcher uses an ExecutorService to run calls internally.
+
+* code
+
+  ```kotlin
+  class Dispatcher constructor() {
+    val executorService: ExecutorService
+      get() {
+        if (executorServiceOrNull == null) {
+          // 创建线程池
+          executorServiceOrNull = ThreadPoolExecutor(0, Int.MAX_VALUE, 60, TimeUnit.SECONDS,
+              SynchronousQueue(), threadFactory("$okHttpName Dispatcher", false))
+        }
+        return executorServiceOrNull!!
+      }
+  }
+  ```
+
+### RealCall
+
+* Call
+
+  ```kotlin
+  package okhttp3
   
+  interface Call : Cloneable {
+    fun request(): Request
+    fun execute(): Response
+    fun enqueue(responseCallback: Callback)
+  }
+  ```
+
+* RealCall
+
+  ```kotlin
+  class RealCall(
+    val client: OkHttpClient,
+    val originalRequest: Request,
+    val forWebSocket: Boolean
+  ) : Call {
+    private val executed = AtomicBoolean()
+    
+    override fun enqueue(responseCallback: Callback) {
+      // atomic operation
+      check(executed.compareAndSet(false, true))
+      // call dispatch.enqueue(AsyncCall)
+      client.dispatcher.enqueue(AsyncCall(responseCallback))
+    }
+    
+    internal inner class AsyncCall(
+      private val responseCallback: Callback
+    ) : Runnable {
+      // Dispather.enqueue() will call this
+      fun executeOn(executorService: ExecutorService) {
+        executorService.execute(this)
+      }
+      // implements Runnable
+      override fun run() {
+        // try get response
+        val response = getResponseWithInterceptorChain()
+        // call callback
+        responseCallback.onResponse(this@RealCall, response)
+      }
+    }
+    
+    internal fun getResponseWithInterceptorChain(): Response {
+      // add all kinds of Interceptors
+      // use chain of responsibility pattern to get response
+      val interceptors = mutableListOf<Interceptor>()
+      interceptors += client.interceptors
+      interceptors += RetryAndFollowUpInterceptor(client)
+      interceptors += BridgeInterceptor(client.cookieJar)
+      interceptors += CacheInterceptor(client.cache)
+      interceptors += ConnectInterceptor
+      if (!forWebSocket) {
+        interceptors += client.networkInterceptors
+      }
+      interceptors += CallServerInterceptor(forWebSocket)
+      
+      val chain = RealInterceptorChain(interceptors = interceptors)
+      return chain.proceed(originalRequest)
+    }
+  }
+  ```
 
 ***
 
