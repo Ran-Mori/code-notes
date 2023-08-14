@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">gson</string>
+    <string name="from_object_to_string">object_to_string</string>
+    <string name="from_string_to_object">string_to_object</string>
+</resources>
