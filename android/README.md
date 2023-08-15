@@ -2932,6 +2932,43 @@ startActivity(intent)
   }
   ```
 
+### RemoteView IPC
+
+* put into intent
+
+  ```java
+  public class Intent implements Parcelable, Cloneable {
+    // as RemoteView has implmented Parcelable interface, so it can be passed as the second parameter
+    public Intent putExtra(String name, Parcelable value) {
+      mExtras.putParcelable(name, value);
+      return this;
+    }
+  }
+  ```
+
+* get from intent
+
+  ```java
+  public class Intent implements Parcelable, Cloneable {
+    public <T> T getParcelableExtra(String name, Class<T> clazz) {
+      return mExtras == null ? null : mExtras.getParcelable(name, clazz);
+    }
+  }
+  ```
+
+* apply
+
+  ```java
+  public class RemoteViews implements Parcelable {
+    // Inflates the view hierarchy represented by this object and applies all of the actions.
+    public View apply(Context context, ViewGroup parent) {
+      View result = inflateView(context, rvToApply, parent);
+      rvToApply.performApply(result, parent, handler, null);
+      return result;
+    }
+  }
+  ```
+
 
 ***
 
