@@ -1,4 +1,4 @@
-package com.canvas
+package com.bitmapdrawablecanvas
 
 import android.content.Context
 import android.graphics.Canvas
@@ -6,9 +6,6 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import androidx.appcompat.widget.AppCompatImageView
 import android.util.TypedValue
-
-
-
 
 class CanvasImageView : AppCompatImageView {
 

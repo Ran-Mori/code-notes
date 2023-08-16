@@ -169,6 +169,13 @@
 
 ## BitmapDrawableCanvas
 
+### dp -> pix
+
+```kotlin
+fun dp2px(context: Context, dp: Int): Float =
+	TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), context.resources.displayMetrics)
+```
+
 ### Bitmap
 
 * 参考博客 -> [Android Bitmap详解](https://www.jianshu.com/p/28c249278c49)
@@ -199,7 +206,7 @@
 
 * 重要方法
 
-  1. `inflate()` -> 每一个子类`Drawable`都应该去实现，规定了从`xml`如何创建一个对应的`Drawable`
+  1. `public void inflate(Resources r, XmlPullParser parser, AttributeSet attrs, Theme theme)` -> 每一个子类`Drawable`都应该去实现，规定了从`xml`如何创建一个对应的`Drawable`
 
      ```java
      public final class DrawableInflater {
@@ -225,9 +232,9 @@
      }
      ```
 
-  2. `setBounds()` -> 当在`canvas`进行`draw`时，规定好位置和区域。即决定了此`Drawable`被绘制在`canvas`的那个位置以及绘制多大。注意它不是决定`drawable`那部分被`draw`，而是决定`canvas`那部分来`draw`整个`drawable`
+  2. `public void setBounds(int left, int top, int right, int bottom)` -> 当在`canvas`进行`draw`时，规定好位置和区域。即决定了此`Drawable`被绘制在`canvas`的那个位置以及绘制多大。注意它不是决定`drawable`那部分被`draw`，而是决定`canvas`那部分来`draw`整个`drawable`
 
-  3. `draw(Canvas canvas)` -> 如何把这个`drawable`绘制到`convas`上，这依赖每个`Drawable`去自己实现
+  3. `public abstract void draw(@NonNull Canvas canvas)` -> 如何把这个`drawable`绘制到`convas`上，这依赖每个`Drawable`去自己实现
 
 * 创建
 
@@ -244,7 +251,7 @@
 
 * 是什么 -> 提供了`draw`的方法，即暴露了`draw`的能力
 
-* `draw somethind`的四个必备要素
+* `draw something`的四个必备要素
   
   1. `A Bitmap to hold the pixels `
   2. `a Canvas to host the draw call`
@@ -263,7 +270,22 @@
   imageView?.setImageDrawable(BitmapDrawable(resources, bitmap))
   ```
 
-### 相互转换
+* draw Circle example 
+
+  ```kotlin
+  override fun onDraw(canvas: Canvas?) {
+    super.onDraw(canvas)
+    val point = dp2px(context, 100)
+    val radius = dp2px(context, 50)
+    val paint = Paint().apply {
+      color = resources.getColor(R.color.green, null)
+      isAntiAlias = true
+    }
+    canvas?.drawCircle(point, point, radius, paint)
+  }
+  ```
+
+### mutual conversion
 
 1. `Bitmap` -> `Drawable`
 
@@ -290,22 +312,6 @@
    textView?.draw(canvas)
    ```
 
-
-***
-
-## Canvas
-
-### dp -> pix
-
-```kotlin
-fun dp2px(context: Context, dp: Int): Float =
-	TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), context.resources.displayMetrics)
-```
-
-### draw圆流程
-
-1. 创建一个`Paint()`
-2. 调用`canvas?.drawCircle(point, point, radius, paint)`方法
 
 ***
 
