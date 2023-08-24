@@ -1351,6 +1351,96 @@
 
 ***
 
+## jni
+
+### process
+
+* file structure
+
+  ```shell
+  jni
+  ├── HelloWorldJNI.class
+  ├── HelloWorldJNI.java
+  ├── jni_HelloWorldJNI.cpp
+  ├── jni_HelloWorldJNI.h
+  ├── jni_HelloWorldJNI.o
+  └── libnative.dylib
+  ```
+
+1. create a file named `HelloWorldJNI.java`, add a native method to it.
+
+   ```java
+   package jni;
+   
+   public class HelloWorldJNI {
+   
+       static {
+           //load native library
+           System.loadLibrary("hello_world_jni");
+       }
+   
+       public static void main(String[] args) {
+           new HelloWorldJNI().sayHello();
+       }
+   
+       // Declare a native method sayHello() that receives no arguments and returns void
+       private native void sayHello();
+   }
+   ```
+
+2. use `javac -h` to generate `jni_HelloWorldJNI.h` file
+
+   `javac -h jni jni/HelloWorldJNI.java`
+
+   ```c++
+   JNIEXPORT void JNICALL Java_jni_HelloWorldJNI_sayHello
+     (JNIEnv *, jobject);
+   ```
+
+3. create `jni_HelloWorldJNI.cpp`并实现方法
+
+   ```cpp
+   #include "jni_HelloWorldJNI.h"
+   #include<iostream>
+   
+   JNIEXPORT void JNICALL Java_jni_HelloWorldJNI_sayHello
+     (JNIEnv *, jobject) {
+   std::cout << "Hello World JNI" << std::endl;
+   }; 
+   ```
+
+4. 编译生成可重定位目标文件
+
+   ```shell
+   clang++ 
+   	-c # 生成可重定位目标文件
+   	-I ${JAVA_HOME}/include # `jni.h`
+   	-I ${JAVA_HOME}/include/darwin #`jni_md.h`
+   	jni/jni_HelloWorldJNI.cpp # 源文件
+   	-o jni/jni_HelloWorldJNI.o # 生成目标文件
+   ```
+
+5. 链接生成动态链接库
+
+   ```shell
+   clang++ 
+   	-dynamiclib # 指定生成动态链接库
+   	jni/jni_HelloWorldJNI.o # 源文件
+   	-o jni/libhello_world_jni.dylib # 生成目标文件
+   ```
+
+6. 运行
+
+   ```shell
+   java 
+   	-Djava.library.path=jni # 将jni目录添加进native库搜索目录
+   	jni.HelloWorldJNI # 全限定类名
+   ```
+
+   `Hello World JNI`
+
+***
+
 ## object
 
 ### getClass
