@@ -3240,6 +3240,124 @@ startActivity(intent)
   }
   ```
 
+### Intercepter
+
+* RetryAndFollowUpInterceptor
+
+  ```kotlin
+  class RetryAndFollowUpInterceptor(private val client: OkHttpClient) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+      while (true) {
+        try {
+          response = realChain.proceed(request) // try get response
+          newExchangeFinder = true
+        } catch (e: RouteException) {
+          // try connect via a route failed, want to retry
+          if (!recover(e.lastConnectException, call, request, requestSendStarted = false)) {
+            // not meet retry condition, fail
+            throw e.firstConnectException.withSuppressed(recoveredFailures)
+          } else {
+            continue // start to retry
+          }
+        } catch (e: IOException) {
+          // An attempt to communicate with a server failed. want to retry
+          if (!recover(e, call, request, requestSendStarted = e !is ConnectionShutdownException)) {
+            // not meet retry condition, fail
+            throw e.withSuppressed(recoveredFailures)
+          } else {
+            continue // start to retry
+          }
+        }
+        // this method will check if status_code indicates you need to redirect
+        val followUp = followUpRequest(response, exchange)
+        if (++followUpCount > MAX_FOLLOW_UPS) {
+          // when redirect counts overlimit, throw exception
+          throw ProtocolException("Too many follow-up requests: $followUpCount")
+        }
+        // redirect, rerun while true
+        request = followUp
+        priorResponse = response
+      }
+    }
+    
+    private fun recover(call: RealCall, userRequest: Request, requestSendStarted: Boolean): Boolean {
+      // The application layer has forbidden retries.
+      if (!client.retryOnConnectionFailure) return false
+      // We can't send the request body again.
+      if (requestSendStarted && requestIsOneShot(e, userRequest)) return false
+      // This exception is fatal.
+      if (!isRecoverable(e, requestSendStarted)) return false
+      // No more routes to attempt.
+      if (!call.retryAfterFailure()) return false
+      // For failure recovery, use the same route selector with a new connection.
+      return true
+    }
+    
+    // get redirect url
+    private fun buildRedirectRequest(userResponse: Response, method: String): Request? {
+      val location = userResponse.header("Location") ?: return null
+      val url = userResponse.request.url.resolve(location) ?: return null
+      return requestBuilder.url(url).build()
+    }
+  }
+  ```
+
+* BridgeInterceptor
+
+  ```kotlin
+  class BridgeInterceptor(private val cookieJar: CookieJar) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+      val userRequest = chain.request()
+      val requestBuilder = userRequest.newBuilder()
+      requestBuilder.header("Content-Type", contentType.toString())
+      requestBuilder.header("Content-Length", contentLength.toString())
+      requestBuilder.header("Connection", "Keep-Alive")
+      requestBuilder.header("Accept-Encoding", "gzip") // use gzip algorithm to reduce response size
+      
+      val responseBuilder = networkResponse.newBuilder()
+          .request(userRequest)
+      // when you use gzip to compress response, it's your duty to decompress it
+      if ("gzip".equals(networkResponse.header("Content-Encoding")) {
+        val gzipSource = GzipSource(responseBody.source())
+        responseBuilder.body(RealResponseBody(contentType, -1L, gzipSource.buffer()))
+      }
+      return responseBuilder.build()
+    }
+  }
+  ```
+
+* CacheInterceptor
+
+  ```kotlin
+  class CacheInterceptor(internal val cache: Cache?) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+      // If we don't need the network, we're done.
+      if (networkRequest == null) {
+        return cacheResponse
+      }
+      // do real request
+      networkResponse = chain.proceed(networkRequest)
+      // when not modified, use cache
+      if (networkResponse?.code == HTTP_NOT_MODIFIED) {
+        val response = cacheResponse
+        cache.update(cacheResponse, response)
+        return response
+      }
+      // not hit cache
+      val response = networkResponse
+      cache.put(response) // put into cache
+      return response
+    }
+  }
+  ```
+
+* ConnectionInterceptor
+
+  ```kotlin
+  ```
+
+  
+
 ***
 
 ## retrofit
