@@ -3354,9 +3354,94 @@ startActivity(intent)
 * ConnectionInterceptor
 
   ```kotlin
+  object ConnectInterceptor : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+      val realChain = chain as RealInterceptorChain
+      // code are very little, but inner it is complicated
+      val exchange = realChain.call.initExchange(chain)
+      val connectedChain = realChain.copy(exchange = exchange)
+      return connectedChain.proceed(realChain.request)
+    }
+  }
   ```
 
-  
+  ```kotlin
+  class ExchangeFinder(
+    private val connectionPool: RealConnectionPool, // pool
+    internal val address: Address, // address
+    private val call: RealCall) {
+    
+    private fun findConnection(connectTimeout: Int, readTimeout: Int, writeTimeout: Int, pingIntervalMillis: Int, onnectionRetryEnabled: Boolean ): RealConnection {
+      // Attempt to reuse the connection from the call.
+      // If the call's connection wasn't released, reuse it. We don't call connectionAcquired() here
+      // because we already acquired it.
+      if (call.connection != null) { return callConnection }
+      
+      // Attempt to get a connection from the pool.
+      if (connectionPool.callAcquirePooledConnection(address, call)) {
+        return call.connection!!
+      }
+      
+      // Nothing in the pool. Figure out what route we'll try next.
+      val routes: List<Route>?
+      val route: Route
+      
+      // Connect. Tell the call about the connecting call so async cancels work.
+      newConnection.connect()
+      return newConnection
+    }
+  }
+  ```
+
+  ```kotlin
+  class RealConnection(
+    val connectionPool: RealConnectionPool,
+    private val route: Route
+  ) : Http2Connection.Listener(), Connection {
+    fun connect() {
+      if (route.requiresTunnel()) {
+        connectTunnel(connectTimeout)
+      } else {
+        connectSocket(connectTimeout)
+      }
+      establishProtocol()
+    }
+    
+    private fun establishProtocol() {
+      if (route.address.sslSocketFactory == null) { //https
+        if (Protocol.H2_PRIOR_KNOWLEDGE in route.address.protocols) {
+          protocol = Protocol.H2_PRIOR_KNOWLEDGE
+          startHttp2(pingIntervalMillis) //http2
+          return
+        }
+        socket = rawSocket
+        protocol = Protocol.HTTP_1_1
+        return
+      }
+      if (protocol === Protocol.HTTP_2) {
+        startHttp2(pingIntervalMillis) // http2
+      }
+    }
+  }
+  ```
+
+* CallServerInterceptor
+
+  ```kotlin
+  class CallServerInterceptor(private val forWebSocket: Boolean) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+      // write request header to server 
+      exchange.writeRequestHeaders(request)
+      // write request body to server
+      requestBody.writeTo(bufferedRequestBody)
+      // read response header from server
+      responseBuilder = exchange.readResponseHeaders(expectContinue = true)
+      // read response body from server
+      exchange.openResponseBody(response)
+      return response
+    }
+  }
+  ```
 
 ***
 
