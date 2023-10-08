@@ -2233,3 +2233,29 @@ public final class String
   ```
 
 ***
+
+## uncaught-exception-handler
+
+### source code
+
+```java
+class Thread implements Runnable {
+  // member virable
+  private volatile UncaughtExceptionHandler uncaughtExceptionHandler;
+  // inner interface
+  public interface UncaughtExceptionHandler {
+    void uncaughtException(Thread t, Throwable e);
+  }
+  // set method
+  public void setUncaughtExceptionHandler(UncaughtExceptionHandler eh) {
+    checkAccess();
+    uncaughtExceptionHandler = eh;
+  }
+  
+  // jvm calls this method when an exception occurs
+  // Dispatch an uncaught exception to the handler. This method is intended to be called only by the JVM.
+  private void dispatchUncaughtException(Throwable e) {
+    getUncaughtExceptionHandler().uncaughtException(this, e);
+  }
+}
+```
