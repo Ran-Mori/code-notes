@@ -1,5 +1,95 @@
 # Java
 
+## by-lazy
+
+### code
+
+* kotlin source code
+
+  ```kotlin
+  class Tester {
+      private val value: Int by lazy { 200 }
+  }
+  ```
+
+* decompiled java code
+
+  ```java
+  public final class Tester {
+     private final Lazy value$delegate;
+  
+     private final int getValue() {
+        Lazy var1 = this.value$delegate;
+        Object var3 = null;
+        return ((Number)var1.getValue()).intValue();
+     }
+  
+     public Tester() {
+        this.value$delegate = LazyKt.lazy((Function0)null.INSTANCE);
+     }
+  }
+  ```
+
+### implementation
+
+* generate a virable `value#delegate` whose type is `Lazy` class
+* init `value#delegate` virable value at constructor
+* calling `getValue()` is equal to calling `value#delegate.getValue()`
+
+### design
+
+* interface `Lazy`
+
+  ```kotlin
+  public interface Lazy<out T> {
+      public val value: T // most important, value T
+      public fun isInitialized(): Boolean
+  }
+  ```
+
+* get instance by static method
+
+  ```kotlin
+  // pass an initializer
+  public actual fun <T> lazy(initializer: () -> T): Lazy<T> = SynchronizedLazyImpl(initializer)
+  ```
+
+* SynchronizedLazyImpl - use single instance to get value
+
+  ```kotlin
+  override val value: T
+      get() {
+          val _v1 = _value
+          if (_v1 !== UNINITIALIZED_VALUE) { return _v1 as T}
+          return synchronized(lock) {
+              val _v2 = _value
+              if (_v2 !== UNINITIALIZED_VALUE) {
+                  _v2 as T
+              } else {
+                  val typedValue = initializer!!()
+                  _value = typedValue
+                  initializer = null
+                  typedValue
+              }
+          }
+      }
+  ```
+
+* UnsafeLazyImpl - it's not thread safe
+
+  ```kotlin
+  override val value: T
+      get() {
+          if (_value === UNINITIALIZED_VALUE) {
+              _value = initializer!!()
+              initializer = null
+          }
+          return _value as T
+      }
+  ```
+
+***
+
 ## collection
 
 ### inheritance relationship

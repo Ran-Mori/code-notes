@@ -9,6 +9,8 @@ void(*signal(int, void (*)(int)))(int);
 ```
 
 ```c++
+void signalHandler(int signalNumber) {}
+
 int main() {
   std::signal(SIGSYS, signalHandler);
 }
