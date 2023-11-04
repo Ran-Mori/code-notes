@@ -90,6 +90,58 @@
 
 ***
 
+## class-loader & class
+
+### class feature
+
+* The primitive Java types (boolean, byte, char, short, int, long, float, and double), and the keyword void are also represented as Class objects.
+* Class has no public constructor. Instead a Class object is constructed automatically by the Java Virtual Machine when a class is derived from the bytes of a class file through the invocation of one of three methods.
+
+### BootStrapClassLoader
+
+* The *Bootstrap Classloader*, being a classloader and all, is actually a part of the JVM Core and it is written in native code.
+* All classloaders, with the exception of the bootstrap classloader, are implemented as Java classes. 
+* BootstrapClassloader is not a subclass of `java.lang.ClassLoader`.
+* The bootstrap classloader is platform specific machine instructions that kick off the whole classloading process.
+
+### class loader feature
+
+* Every Class object contains a reference to the `ClassLoader` that defined it.
+
+  ```java
+  // Some implementations may use null to represent the bootstrap class loader.
+  public final class Class<T> {
+    public ClassLoader getClassLoader() {}
+  }
+  ```
+
+### loadClass
+
+```java
+protected Class<?> loadClass(String name, boolean resolve) {
+  // First, check if the class has already been loaded
+  Class<?> c = findLoadedClass(name); // implemented in native code
+  if (c == null) {
+    try {
+      if (parent != null) {
+        c = parent.loadClass(name, false); // delegate to parent
+      } else {
+        c = findBootstrapClassOrNull(name);
+      }
+    } catch (ClassNotFoundException e) {}
+
+    if (c == null) {
+      // If still not found, then invoke findClass in order
+      // to find the class.
+      c = findClass(name);
+    }
+  }
+  return c;
+}
+```
+
+***
+
 ## collection
 
 ### inheritance relationship
