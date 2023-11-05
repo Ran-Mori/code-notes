@@ -1309,7 +1309,72 @@ protected Class<?> loadClass(String name, boolean resolve) {
   }
   ```
 
-  
+
+***
+
+## inline
+
+### reference
+
+* [noinline-and-crossline-once-for-all](https://ncorti.com/blog/noinline-and-crossline-once-for-all)
+
+### inline
+
+* source code
+
+  ```kotlin
+  inline fun <T> T.applyWithInline(block: T.() -> Unit): T {
+      block()
+      return this
+  }
+  ```
+
+* features
+
+  1. there will be an instance of `Function1` generated if you don't use keyword `inline`
+  2. both the body of the function and the parameter `block` will be flated if you use keywork `inline`, so there is not an instance of `Function1` generated
+  3. you can't access a private member variable in an inline member function, as the function body will be flated at compiling time.
+
+### noline
+
+* source code
+
+  ```kotlin
+  inline fun withNoInlineFunc(noinline block: () -> Unit) {
+      println("before call")
+      block.invoke()
+      println("after call")
+  }
+  ```
+
+* feature
+
+  1. only use for parameter, not for function itself
+  2. it is allowed only for function parameters of an inline function
+  3. the body of the function will be flated as you use `inline`
+  4. the parameter `block` will not be flated as you use `noinline`, so there will be an instance of `Function1` generated while calling this function.
+
+* why exist?
+
+  * souce code
+
+    ```kotlin
+    fun funcNeedBlockParameter(block: () -> Unit) { block.invoke() }
+    
+    inline fun inlineFuncWithParaBlock(block: () -> Unit) { funcNeedBlockParameter(block) }
+    ```
+
+  * `inlineFuncWithParaBlock()` will report an error, illegal usage of inline-parameter 'block' in 'public inline fun inlineFuncWithParaBlock(block: () -> Unit)
+
+  * the parameter `block` of `inlineFuncWithParaBlock()` is flated as you use `inline`, so in the function body, `block` is not an instance of `() -> Unit` type
+
+  * so you need to use `noline`
+
+### crossinline
+
+* forbids non-local returns in a lambda passed to an inline function
+
+***
 
 ## invokedynamic
 
