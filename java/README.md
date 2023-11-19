@@ -1,5 +1,21 @@
 # Java
 
+## annotation-processor
+
+### compile
+
+* use `@Retention(RetentionPolicy.SOURCE)`
+* new a processor extends `AbstractProcessor`, and override `process()` method. It works at compile time.
+* such as `SmartRouter`, `ServiceApi`
+
+### runtime
+
+* use `RetentionPolicy.RUNTIME`
+* use reflection to get the annotation at runtime, and do something you may like. It works at runtime.
+* such as `@Get` in retrofit
+
+***
+
 ## by-lazy
 
 ### code
