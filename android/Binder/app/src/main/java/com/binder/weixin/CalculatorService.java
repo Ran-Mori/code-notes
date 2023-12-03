@@ -1,4 +1,4 @@
-package com.binder;
+package com.binder.weixin;
 
 import android.app.Service;
 import android.content.Intent;
@@ -7,16 +7,17 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
+// it runs in remote process
 public class CalculatorService extends Service {
 
     private static final int NOTIFICATION_ID = 1;
-    private CalculatorImpl mBinder;
+    private CalculatorServer mBinder;
 
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d("IzumiSakai", "CalculatorService onCreate()");
-        mBinder = new CalculatorImpl();
+        mBinder = new CalculatorServer();
     }
 
 

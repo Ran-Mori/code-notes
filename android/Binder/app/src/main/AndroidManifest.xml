@@ -14,7 +14,7 @@
         android:theme="@style/Theme.BaseAndroidProject"
         tools:targetApi="31">
         <activity
-            android:name="com.binder.MainActivity"
+            android:name="com.binder.douyin.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -23,7 +23,7 @@
         </activity>
 
         <service
-            android:name="com.binder.CalculatorService"
+            android:name="com.binder.weixin.CalculatorService"
             android:enabled="true"
             android:process=":externalProcess"
             android:exported="true">

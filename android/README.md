@@ -61,80 +61,86 @@
 * `Service` - It is a component in the Android system that runs in the background and provides a set of APIs that can be accessed by other processes.
 * `client` - It is the process that uses a service provided by another process.
 * `server` - It is the process that provides a service that can be used by other processes.
-* `Stub` - It is an object that resides in the process that provides a service, and which can be called by other processes. When a remote process wants to access a service implemented by another process, it sends a request to the stub object. The stub then forwards the request to the actual implementation of the service in the local process.
+* `Stub` - It is an object that resides in the process that provides a service, and which can be called by other processes. When a remote process wants to access a service implemented by another process, it sends a request to the stub object. The stub then forwards the request to the actual implementation(`CalculatorServer`) of the service in the local process.
 * `Proxy` - It is an object that resides in the process that needs to access a remote service, and which acts as a surrogate for the stub object in the remote process. The proxy object provides a local API that looks as if it is calling the remote service directly. When a call is made on the proxy object, it is actually sent to the stub object in the remote process.
 
-### Client与Server
+### 注意事项
 
-* Client
-  1. Client需要知道Server端Service的全类名
-  2. 知道全类名后，Client直接通过给Intent传入全类名，然后通过`ServiceManager`找到这个Service
-  3. bind上Service后，回返回一个`IBinder`，这实际就是远端的实现
-* Server
-  1. Server侧要将Service启动起来，供Client查询
-  2. Server被绑定时，要将实现的`Binder`返回给客户端
-* Client调Server
-  * Client实际是通过`Proxy`发起的调用，`Proxy`将这个请求转给`Stub.transact()`进行远程调用
+1. 一定要记得server侧在中进行注册
 
-### 如何使用
 
-1. 有一个复杂的类`ICalculator.java`
+### process
 
-   ```java
-   //继承了IInterface，因此需要实现`asBinder`方法
-   public interface ICalculator extends android.os.IInterface {
-     
-     // 默认实现，不用怎么管
-     // 一共三个方法，其中basicTypes()和add()都是在aidl文件中定义的方法，而asBinder()是android.os.IInterface中的方法
-     public static class Default implements ICalculator {}
-     
-     // Local-side IPC implementation stub class.
-     public static abstract class Stub extends android.os.Binder implements ICalculator {
-       // 实现asBinder()，onTransact()
-       
-       // 将Stub转换成Proxy
-       public static ICalculator asInterface(android.os.IBinder obj) {
-       
-       // 提供一个java方式的调用
-       private static class Proxy implements ICalculator {}
-     }
-   }
+1. server侧写一个`Service`，在`onBind()`方法中返回`server impl`
+
+   ```kotlin
+   public IBinder onBind(Intent intent) { return new CalculatorServer(); }
    ```
 
-2. Server端实现一个Service
+2. server在`AndroidManifest.xml`将这个`Service`对外暴露，并启动起来
 
-   ```java
-   public class CalculatorService extends Service {
-   
-     private CalculatorImpl mBinder = new CalculatorImpl();
-   
-     // 返回真正的实现给客户端
-     @Override
-     public IBinder onBind(Intent intent) { return mBinder; }
-   }
+   ```xml
+   <!--AndroidManifest.xml-->
+   <service
+       android:name="com.binder.service.CalculatorService"
+       android:enabled="true"
+       android:exported="true" />
    ```
 
-3. Client端bindService()来获取`IBinder`
+3. client通过包名，用启动四大组件的方式连接这个`Service`，`Service`返回`server impl`的内存地址，静态类型为`IBinder`
 
    ```java
-   private ICalculator mCalculator;
+   public void connect(Context context) {
+     Intent intent = new Intent();
+     // 通过包名的方式启动Service
+     intent.setComponent(new ComponentName("com.binder","com.binder.CalculatorService"));
+     context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+   }
    
    private ServiceConnection mConnection = new ServiceConnection() {
      @Override
      public void onServiceConnected(ComponentName name, IBinder service) {
-       // 绑定成功时进行赋值
+       // 这个回调的参数service就是server侧impl的内存地址，静态类型为IBinder
        mCalculator = ICalculator.Stub.asInterface(service);
      }
    };
    ```
 
-4. 一定要记得在`AndroidManifest.xml`中进行注册
+4. 将`server impl`进行一层包装，包成了`ICalculator.Stub.Proxy`类。这是`ICalculator.Stub.asInterface(service)`这一行实现的
 
-   ```xml
-   <service
-       android:name="com.binder.service.CalculatorService"
-       android:enabled="true"
-       android:exported="true" />
+   ```java
+   public static ICalculator asInterface(android.os.IBinder obj) {
+       // 先本地查返回，查不到返回Proxy
+       return new ICalculator.Stub.Proxy(obj);
+   }
+   ```
+
+5. client侧调用接口方法，最后走到`mRemote#onTransact()`
+
+   ```java
+   private static class Proxy implements ICalculator {
+     private android.os.IBinder mRemote; // server impl的内存地址
+     public int add(int a, int b) {
+       // _data, _reply分别是in和out Parcel
+       _status = mRemote.transact(Stub.TRANSACTION_add, _data, _reply, 0);
+     }
+   }
+   ```
+
+6. `server impl` 真正 run方法
+
+   ```java
+   abstract class Stub extends android.os.Binder implements ICalculator {
+     public boolean onTransact() {
+       _arg1 = data.readInt();
+       int _result = this.add(_arg0, _arg1); // 真正调用
+       reply.writeNoException();
+     }
+   }
+   
+   public class CalculatorServer extends ICalculator.Stub {
+     public int add(int a, int b) throws RemoteException { return a + b; }
+   }
    ```
 
 ### 特点
@@ -156,14 +162,7 @@
    }
    ```
 
-2. 运行过程
-
-   1. 客户端发起方法调用，传入`code`，将请求写入inParcel
-   2. 执行RPC调用，客户端发起调用的线程被挂起
-   3. 服务端`onTransact()`实现处执行，处理完成后结果写入outParcel
-   4. RPC返回，客户端恢复被挂起线程执行
-
-3. `onTRansact()`方法会运行在服务端的一个线程池中，因此即使它很耗时，也应该用同步的方式去实现；但RPC返回耗时久，客户端不能放在UI线程执行
+3. `onTransact()`方法会运行在服务端的一个线程池中，因此即使它很耗时，也应该用同步的方式去实现；但RPC返回耗时久，客户端不能放在UI线程执行
 
 ***
 

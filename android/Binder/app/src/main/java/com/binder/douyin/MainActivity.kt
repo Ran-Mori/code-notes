@@ -1,9 +1,10 @@
-package com.binder
+package com.binder.douyin
 
 import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.binder.R
 
 class MainActivity : AppCompatActivity() {
 
@@ -18,12 +19,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         textView = findViewById(R.id.text_view)
+        client.connect(this)
 
         textView?.setOnClickListener {
             Log.d(TAG, "text view onClick, call add by binder value = ${client.add(3,6)}")
         }
-
-        client.connect(this)
     }
 
     override fun onDestroy() {
