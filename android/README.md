@@ -4381,27 +4381,71 @@ class MainActivity : AppCompatActivity() {
 
 ## WindowManager
 
-### 好文链接
+### links
 
 * [Android绘制流程 —— View、Window、SurfaceFlinger](https://juejin.cn/post/6899010578145411085)
+* [Android全面解析之Window机制](https://juejin.cn/post/6888688477714841608)
 
-### 添加View
+### 几个关键类
 
-* 前置条件 -> 已获取`android.settings.action.MANAGE_OVERLAY_PERMISSION`权限
+1. ViewManager
 
-* 代码示例
+   * source code
 
-  ```kotlin
-  val view: View = LayoutInflater.from(this).inflate(R.layout.my_custom_view, null)
-  val params = WindowManager.LayoutParams(
-    WindowManager.LayoutParams.WRAP_CONTENT,
-    WindowManager.LayoutParams.WRAP_CONTENT,
-    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-    PixelFormat.TRANSLUCENT
-  )
-  windowManager.addView(view, params)
-  ```
+     ```java
+     public interface ViewManager{
+         public void addView(View view, ViewGroup.LayoutParams params);
+         public void updateViewLayout(View view, ViewGroup.LayoutParams params);
+         public void removeView(View view);
+     }
+     ```
+
+   * `ViewManager`接口定义得很纯净，就是cud三个操作
+
+2. WindowManagerImpl
+
+   * definition
+
+     ```java
+     // public interface WindowManager extends ViewManager
+     public final class WindowManagerImpl implements WindowManager {
+       private final WindowManagerGlobal mGlobal = WindowManagerGlobal.getInstance();
+       public void addView(View view, ViewGroup.LayoutParams params) { mGlobal.addView(); }
+     }
+     ```
+
+   * 最终`WindowManagerImpl`是实现了`ViewManager`接口
+
+   * 将所有的操作全都委托给了`WindowManagerGlobal`
+
+   * 创建
+
+     ```java
+     // window.java
+     if (wm == null) {
+       // 获取到系统WindowManagerService
+       wm = (WindowManager)mContext.getSystemService(Context.WINDOW_SERVICE);
+     }
+     // 创建一个本地使用的WindowManagerImpl对象
+     mWindowManager = ((WindowManagerImpl)wm).createLocalWindowManager(this);
+     ```
+
+3. WindowManagerGlobal
+
+   * definition
+
+     ```java
+     public final class WindowManagerGlobal {
+       private ArrayList<View> mViews = new ArrayList<View>(); // 存所有DecorView
+       private ArrayList<ViewRootImpl> mRoots = new ArrayList<ViewRootImpl>(); // 存所有ViewRootImpl
+       private static IWindowManager sWindowManagerService; // static全局唯一
+       
+       public static IWindowManager getWindowManagerService() {
+         // 通过Binder获取WindowManagerService
+         sWindowManagerService = IWindowManager.Stub.asInterface(ServiceManager.getService("window"));
+       }
+     }
+     ```
 
 ### setContentView流程
 
@@ -4552,12 +4596,11 @@ class MainActivity : AppCompatActivity() {
        ViewManager wm = a.getWindowManager(); // 从Activity或者wm
        WindowManager.LayoutParams l = r.window.getAttributes(); // 获取LayoutParams
        wm.addView(decor, l); // 尝试把整个DecorView添加进Window
-       
        r.activity.makeVisible(); //添加结束后最后设置为可见 
      }
    }
    ```
-
+   
 2. WindowManagerGloabal创建ViewRootImpl
 
    ```java
@@ -4579,12 +4622,91 @@ class MainActivity : AppCompatActivity() {
    ```java
    public final class ViewRootImpl {
      View mView;
+     
+     public ViewRootImpl(Context context, Display display) {
+       // getWindowSession()是单例，即一个应用对应一个Session
+       this(context, display, WindowManagerGlobal.getWindowSession(), false);
+     }
      // 上面会调到这个方法
      public void setView(View view, WindowManager.LayoutParams attrs) {
        mView = view; // 把DecorView赋值给mView
        requestLayout(); // 调一下requestLayout()
        // 跨进程Binder代理调用，通过系统进程的WindowManagerService建立连接
        res = mWindowSession.addToDisplayAsUser(mWindow, mWindowAttributes)
+     }
+   }
+   ```
+   
+
+### window添加进WMS
+
+1. Session#addToDisplayAsUser()
+
+   ```java
+   // 继承Stub，是Binder IPC的server侧
+   //  There is generally one Session object per process 
+   class Session extends IWindowSession.Stub {
+     final WindowManagerService mService; // 持有WMS
+     
+     @Override // Override，说明是IWindowSession接口定义的方法
+     public int addToDisplayAsUser(IWindow window, WindowManager.LayoutParams attrs) {
+       return mService.addWindow(this, window);
+     }
+   }
+   ```
+
+2. WindowManagerService#addWindow()
+
+   ```java
+   // 继承Stub，是Binder IPC的server侧
+   public class WindowManagerService extends IWindowManager.Stub {
+     public int addWindow(Session session, IWindow client) {
+       // 代码太复杂，就不贴了
+     }
+   }
+   ```
+
+### 删除View过程
+
+1. WindowManagerGlobal#removeView()
+
+   ```java
+   public final class WindowManagerGlobal {
+     public void removeView(View view, boolean immediate) {
+       removeViewLocked(index, immediate);
+     }
+     private void removeViewLocked(int index, boolean immediate) {
+       ViewRootImpl root = mRoots.get(index);
+       View view = root.getView();
+       boolean deferred = root.die(immediate); // 将操作委托给ViewRootImpl, 返回是否异步
+       if (deferred) {
+         mDyingViews.add(view); // 如果是同步，立即就删除，如果是异步，添进mDyingViews
+       }
+     }
+   }
+   ```
+
+2. ViewRootImpl#die()
+
+   ```java
+   public final class ViewRootImpl implements ViewParent {
+     boolean die(boolean immediate) {
+       if (immediate && !mIsInTraversal) {
+         doDie(); // 同步，直接doDie
+         return false;
+       }
+       mHandler.sendEmptyMessage(MSG_DIE); // 异步，抛个事件，收到事件后也是执行doDie()
+       return true;
+     }
+     void doDie() {
+       dispatchDetachedFromWindow();
+     }
+     
+     void dispatchDetachedFromWindow() {
+       mView.dispatchDetachedFromWindow(); // 分发detachedFromWindow事件
+       mView = null;
+       mAttachInfo.mRootView = null; // 持有元素置空
+       mWindowSession.remove(mWindow); //最后调用到WMS来remove
      }
    }
    ```
