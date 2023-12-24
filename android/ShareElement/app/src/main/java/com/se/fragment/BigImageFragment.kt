@@ -1,4 +1,4 @@
-package com.se
+package com.se.fragment
 
 import android.os.Bundle
 import android.transition.TransitionInflater
@@ -10,6 +10,8 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.app.SharedElementCallback
+import com.se.MainActivity
+import com.se.R
 
 
 class BigImageFragment : Fragment() {
@@ -26,7 +28,9 @@ class BigImageFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        sharedElementEnterTransition =  TransitionInflater.from(requireContext()).inflateTransition(R.transition.share_element)
+        sharedElementEnterTransition =  TransitionInflater.from(requireContext()).inflateTransition(
+            R.transition.share_element
+        )
         setEnterSharedElementCallback(object : SharedElementCallback(){
             override fun onSharedElementStart(
                 sharedElementNames: MutableList<String>?,
