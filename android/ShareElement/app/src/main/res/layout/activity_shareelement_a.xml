@@ -13,7 +13,7 @@
         android:text="activity_a"/>
 
     <ImageView
-        android:id="@+id/iv_for_share"
+        android:id="@+id/iv_for_share_a"
         android:layout_width="250dp"
         android:layout_height="250dp"
         android:src="@drawable/ic_launcher_background"

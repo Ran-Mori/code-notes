@@ -37,7 +37,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        //
         window.requestFeature(Window.FEATURE_CONTENT_TRANSITIONS)
 
         val layoutId = when(strategy) {
@@ -138,12 +137,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initShareElement() {
-        val bounds: Transition = ChangeBounds().apply { duration = 10000 }
-        window.sharedElementEnterTransition = bounds
-        window.sharedElementReturnTransition = bounds
+        window.sharedElementExitTransition = null
 
         val btn = rootView?.findViewById<View>(R.id.bt_click) ?: return
-        val iv = rootView?.findViewById<View>(R.id.iv_for_share) ?: return
+        val iv = rootView?.findViewById<View>(R.id.iv_for_share_a) ?: return
         btn.setOnClickListener {
             val bundle = ActivityOptions.makeSceneTransitionAnimation(this, iv,"shareElement").toBundle()
             val intent = Intent(this, ActivityB::class.java)
