@@ -4007,8 +4007,15 @@ public boolean onTouchEvent(MotionEvent ev) {
 
   * `ViewRootImpl`持有了这个对象，即一颗`view tree`，一个`window`，共享一个`Surface`
 
+    ```java
+    public final class ViewRootImpl implements ViewParent {
+      BaseSurfaceHolder mSurfaceHolder;
+    	public final Surface mSurface = new Surface(); 
+    }
+    ```
+  
   * java代码
-
+  
     ```java
     public class Surface implements Parcelable {
       long mNativeObject; // 真正的nativeSurface
@@ -4070,12 +4077,18 @@ public boolean onTouchEvent(MotionEvent ev) {
 
   * `Provides a dedicated drawing surface embedded inside of a view hierarchy.`
 
-  * 是`View`的子类
+  * 是`View`的子类；不与`window`共享`surface`，而是自己持有一个`surface`；未重写`onDraw()`方法，即不参与绘制
 
-  * 不与`window`共享`surface`，而是自己持有一个`surface`
-
+    ```java
+    public class SurfaceView extends View {
+      final Surface mSurface = new Surface(); // Current surface in use
+    }
+    ```
+  
+    
+  
   * 为了解决与`window#surface`的重叠问题，`SurfaceView`是在`Z轴`的底部，通过让`window#surface`设置为透明而显示出来
-
+  
   * `surface`绘制的线程可以自己定，可以不是主线程
 
 
@@ -4162,7 +4175,7 @@ public boolean onTouchEvent(MotionEvent ev) {
     final boolean creating;
     final boolean sizeChanged;
     
-    if(hasChanged) {
+    if (hasChanged) {
       getLocationInWindow(mLocation); // 获取此SurfaceView在window中的位置
       
       mWindowSpaceLeft = mLocation[0]; // 记录位置在mScreenRect成员变量内
@@ -4181,7 +4194,7 @@ public boolean onTouchEvent(MotionEvent ev) {
     boolean shouldSyncBuffer = redrawNeeded && viewRoot.wasRelayoutRequested()
     if (shouldSyncBuffer) {
       // 队列加一个消息
-      mBlastBufferQueue.syncNextTransaction( false, onTransactionReady);
+      mBlastBufferQueue.syncNextTransaction(false, onTransactionReady);
     }
   
     // 里面进行了一大堆操作，最终返回size是否变化
@@ -4257,7 +4270,7 @@ public boolean onTouchEvent(MotionEvent ev) {
 * 模型 - 生产者消费者模式
 
   * 生产者 - 产生图像源数据，如`Surface`，截图时的`SurfaceFlinger`
-  * 消费之 - 消费图像源数据，如`SurfaceFlinger`，截图时另外的一个`BufferQueue`
+  * 消费者 - 消费图像源数据，如`SurfaceFlinger`，截图时另外的一个`BufferQueue`
 
 * BufferState
 
