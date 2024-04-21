@@ -1,6 +1,6 @@
 # Android
 
-## BaseAndroidProject
+## base_android_project
 
 ### 规定版本
 
@@ -28,7 +28,95 @@
 
 ***
 
-## Binder
+## animation
+
+### xml写动画和插值器
+
+* 动画
+
+  ```xml
+  <?xml version="1.0" encoding="utf-8"?>
+  <translate
+      xmlns:android="http://schemas.android.com/apk/res/android"
+      android:fromYDelta="0"
+      android:toYDelta="100"
+      android:duration="1000"
+      android:interpolator="@anim/cycler" />
+  ```
+
+* 插值器
+
+  ```xml
+  <?xml version="1.0"?>
+  <cycleInterpolator
+      xmlns:android="http://schemas.android.com/apk/res/android"
+      android:cycles="5"/>
+  ```
+
+* 以上动画的效果是 -> 在y方向上执行5此平移，达到上下shake的视觉效果
+
+### View#invalidate()
+
+*  可以理解成作用是`强制重绘，调用draw()`
+
+### View执行动画接口
+
+* `public void startAnimation(Animation animation)`
+* 最终动画执行在`View#applyLegacyAnimation()`方法内
+
+### 插值器
+
+1. `LinearInterpolator`
+2. `AccelerateInterpolator`
+3. `DecelerateInterpolator`
+4. `CycleInterpolator`
+5. `AnticipateInterpolator()` - starts backward then flings forward
+6. `OvershootInterpolator()` - flings forward and overshoots the last value then comes back
+
+### 动画与onDraw()方法的关系
+
+* Animations in Android are a way to change the state of a View over time, typically by animating specific properties such as position, size, or opacity.
+* When an animation is running, the View's drawing method is called on each frame of the animation to update the View's appearance based on the current state of the animation. 
+* However, even when an animation is not running, the View's drawing method may still be called for other reasons, such as when the View is invalidated or when the system needs to redraw the View for some other reason.
+
+***
+
+## application_singleton
+
+### 自定义Application
+
+* 继承`Application()`
+* 在`AndroidManifest.xml`中修改标签
+
+***
+
+## battery_broadcast
+
+### 接收广播
+
+1. 定义一个`BroadcastReceiver()`
+
+2. `context`中`registerReceiver`
+
+   ```kotlin
+   // 写一个Receiver
+   private val broadReceiver = object : BroadcastReceiver() {
+     override fun onReceive(context: Context?, intent: Intent?) {
+       val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, 0)
+     }
+   }
+   
+   override fun onCreate(savedInstanceState: Bundle?) {
+     super.onCreate(savedInstanceState)
+     setContentView(R.layout.activity_main)
+     // 注册一下监听，声明只监听Intent.ACTION_BATTERY_CHANGED
+     registerReceiver(broadReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+   }
+   ```
+
+***
+
+## binder
 
 ### 好文链接
 
@@ -166,7 +254,7 @@
 
 ***
 
-## BitmapDrawableCanvas
+## bitmap_drawable_canvas
 
 ### dp -> pix
 
@@ -314,7 +402,27 @@ fun dp2px(context: Context, dp: Int): Float =
 
 ***
 
-## BottomSheetDialog
+## boot_receiver
+
+### 接收广播
+
+1. 定义一个`BroadcastReceiver()`
+
+2. 在`AndroidManifest.xml`中增加一个`<receiver>`标签
+
+   ```xml
+   <receiver android:name="com.cbbootreceiver.MyBootReceiver"
+     android:exported="true">
+     <intent-filter>
+       <!--当收到BOOT_COMPLETED通知时，就会执行Receiver的onReceive()方法-->
+       <action android:name="android.intent.action.BOOT_COMPLETED" />
+     </intent-filter>
+   </receiver>
+   ```
+
+***
+
+## bottom_sheet_dialog
 
 ### layout
 
@@ -335,97 +443,7 @@ fun dp2px(context: Context, dp: Int): Float =
 
 ***
 
-## CBAnimation
-
-### xml写动画和插值器
-
-* 动画
-
-  ```xml
-  <?xml version="1.0" encoding="utf-8"?>
-  <translate
-      xmlns:android="http://schemas.android.com/apk/res/android"
-      android:fromYDelta="0"
-      android:toYDelta="100"
-      android:duration="1000"
-      android:interpolator="@anim/cycler" />
-  ```
-
-* 插值器
-
-  ```xml
-  <?xml version="1.0"?>
-  <cycleInterpolator
-      xmlns:android="http://schemas.android.com/apk/res/android"
-      android:cycles="5"/>
-  ```
-
-* 以上动画的效果是 -> 在y方向上执行5此平移，达到上下shake的视觉效果
-
-### View#invalidate()
-
-*  可以理解成作用是`强制重绘，调用draw()`
-
-### View执行动画接口
-
-* `public void startAnimation(Animation animation)`
-* 最终动画执行在`View#applyLegacyAnimation()`方法内
-
-### 插值器
-
-1. `LinearInterpolator`
-2. `AccelerateInterpolator`
-3. `DecelerateInterpolator`
-4. `CycleInterpolator`
-5. `AnticipateInterpolator()` - starts backward then flings forward
-6. `OvershootInterpolator()` - flings forward and overshoots the last value then comes back
-
-### 动画与onDraw()方法的关系
-
-* Animations in Android are a way to change the state of a View over time, typically by animating specific properties such as position, size, or opacity.
-* When an animation is running, the View's drawing method is called on each frame of the animation to update the View's appearance based on the current state of the animation. 
-* However, even when an animation is not running, the View's drawing method may still be called for other reasons, such as when the View is invalidated or when the system needs to redraw the View for some other reason.
-
-***
-
-## CBApplicationSingleton
-
-### 自定义Application
-
-* 继承`Application()`
-* 在`AndroidManifest.xml`中修改标签
-
-***
-
-## CBBatteryBroadcast
-
-### 接收广播
-
-1. 定义一个`BroadcastReceiver()`
-
-2. `context`中`registerReceiver`
-
-   ```kotlin
-   // 写一个Receiver
-   private val broadReceiver = object : BroadcastReceiver() {
-     override fun onReceive(context: Context?, intent: Intent?) {
-       val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, 0)
-     }
-   }
-   
-   override fun onCreate(savedInstanceState: Bundle?) {
-     super.onCreate(savedInstanceState)
-     setContentView(R.layout.activity_main)
-     // 注册一下监听，声明只监听Intent.ACTION_BATTERY_CHANGED
-     registerReceiver(broadReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-   }
-   ```
-
-   
-
-***
-
-## CBCompatibility
+## compatibility
 
 ### compatibility layer
 
@@ -471,690 +489,13 @@ fun dp2px(context: Context, dp: Int): Float =
 
 ***
 
-## CBBootReceiver
-
-### 接收广播
-
-1. 定义一个`BroadcastReceiver()`
-
-2. 在`AndroidManifest.xml`中增加一个`<receiver>`标签
-
-   ```xml
-   <receiver android:name="com.cbbootreceiver.MyBootReceiver"
-     android:exported="true">
-     <intent-filter>
-       <!--当收到BOOT_COMPLETED通知时，就会执行Receiver的onReceive()方法-->
-       <action android:name="android.intent.action.BOOT_COMPLETED" />
-     </intent-filter>
-   </receiver>
-   ```
-
-***
-
-## CBDrawableAnimate
-
-### `AnimationDrawable`使用
-
-1. 定义一个`xml`
-
-   ```xml
-   <?xml version="1.0" encoding="utf-8"?>
-   <animation-list>
-       <item android:drawable="@drawable/red" android:duration="2000" />
-       <item android:drawable="@drawable/blue" android:duration="2000" />
-       <item android:drawable="@drawable/green" android:duration="2000" />
-   </animation-list>
-   ```
-
-2. 将`xml`赋值给`View.background`
-
-3. 将`background`转成`AnimationDrawable`，然后调用`start()`方法开始动画
-
-***
-
-## CBElevation
-
-### 是什么
-
-* 是`View`三维的一个度量
-
-### 注意事项
-
-* 必须要有`background`的前提下设置了`elevation`才有用
-
-### 高度就是高度
-
-* `FrameLayout`中栈底的`View`会因为有`elevation`值而到栈顶
-
-***
-
-## CBGestureDetector
-
-### GestureDetector
-
-* 功能
-
-  * Detects various gestures(fling, doubleclick, longpress, singletapup) and events using the supplied MotionEvents.
-
-* 使用
-
-  * 创建一个`GestureDetector`
-
-  * 将`onTouchEvent`委托给它
-
-    ```kotlin
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-      return gesturedetector?.onTouchEvent(event) ?: super.onTouchEvent(event)
-    }
-    ```
-
-### 手势识别
-
-* 双击
-
-  ```java
-  // 当前的Down Event
-  private MotionEvent mCurrentDownEvent;
-  // 外部注入的双击Listener
-  private OnDoubleTapListener mDoubleTapListener;
-  // 双击时second_down是否生效标记， second_down -> second_up之间为true
-  private boolean mIsDoubleTapping;
-  
-  public boolean onTouchEvent(@NonNull MotionEvent ev) {
-    switch (action & MotionEvent.ACTION_MASK) {
-        case MotionEvent.ACTION_DOWN:
-        	// 检查是否间隔小于DOUBLE_TAP_TIMEOUT，小于就移除Tap消息
-        	boolean hadTapMessage = mHandler.hasMessages(TAP);
-          if (hadTapMessage) mHandler.removeMessages(TAP);
-        	// 1. frist_down(虽然名字是current)和first_up不为空
-        	// 2. first_down -> second_down时间check
-        	// 3. first_up -> second_down时间check，first_down -> second_down距离check
-          if ((mCurrentDownEvent != null) && (mPreviousUpEvent != null)
-              && hadTapMessage 
-              && isConsideredDoubleTap(mCurrentDownEvent, mPreviousUpEvent, ev)) {
-            mIsDoubleTapping = true;
-            // 执行second_down的回调
-            handled |= mDoubleTapListener.onDoubleTap(mCurrentDownEvent);
-            // 执行双击中回调
-            handled |= mDoubleTapListener.onDoubleTapEvent(ev);
-          } else {
-            // first_down，间隔DOUBLE_TAP_TIMEOUT(300ms) post一个信息
-            mHandler.sendEmptyMessageDelayed(TAP, DOUBLE_TAP_TIMEOUT);
-          }
-        	
-        	// 给mCurrentDownEvent赋值
-          mCurrentDownEvent = MotionEvent.obtain(ev);
-        case MotionEvent.ACTION_MOVE:
-        	if (mIsDoubleTapping) {
-            // 执行双击中回调
-            handled |= mDoubleTapListener.onDoubleTapEvent(ev);
-          }
-        case MotionEvent.ACTION_UP:
-        	if (mIsDoubleTapping) {
-            // 执行双击中回调
-            handled |= mDoubleTapListener.onDoubleTapEvent(ev);
-          } else if(...) {
-            // 单击回调优先级低于双击
-            handled = mListener.onSingleTapUp(ev);
-          }
-        	// 给mPreviousUpEvent赋值
-        	mPreviousUpEvent = currentUpEvent;
-          // up结束后将双击中标记位清除
-        	mIsDoubleTapping = false;
-    }
-    return handled;
-  }
-  
-  private boolean isConsideredDoubleTap(MotionEvent firstDown, MotionEvent firstUp, MotionEvent secondDown) {
-    // first_up -> second_down时间check，超过400ms和小于40ms都不行
-    long deltaTime = secondDown.getEventTime() - firstUp.getEventTime();
-    if (deltaTime > DOUBLE_TAP_TIMEOUT || deltaTime < DOUBLE_TAP_MIN_TIME) {
-      
-      return false;
-    }
-    
-    int deltaX = (int) firstDown.getX() - (int) secondDown.getX();
-    int deltaY = (int) firstDown.getY() - (int) secondDown.getY();
-    // first_down -> second_down距离别隔太远
-    return (deltaX * deltaX + deltaY * deltaY < mDoubleTapSlopSquare)
-  }
-  
-  private class GestureHandler extends Handler {
-    @Override
-    public void handleMessage(Message msg) {
-      switch (msg.what) {
-          case TAP:
-          	if (mDoubleTapListener != null) {
-              // first_down的回调
-              mDoubleTapListener.onSingleTapConfirmed(mCurrentDownEvent);
-            }
-      }
-    }
-  }
-  ```
-
-  * 四个动作
-    1. first_down -> `OnDoubleTapListener#onSingleTapConfirmed()` -> 在`GestureHandler`内被执行
-    2. first_up -> 
-    3. second_down -> `OnDoubleTapListener#onDoubleTap(), OnDoubleTapListener#onDoubleTapEvent() ` -> 在`onTouchEvent()#ACTION_DOWN` 内执行
-    4. second_up -> `OnDoubleTapListener#onDoubleTapEvent()` -> 在`onTouchEvent()#ACTION_UP` 内执行
-  * 设计思路
-    * 双击的真正触发是在`second_down`而不是`second_up`
-    * `first_down -> second_down` <= `300ms` && `frist_up -> second_down` <= `400ms`
-    * 双击和单击无法做到互斥，即`first_up`的时候肯定会执行单击，有可能整个双击的过程中会有一次单击和双击
-
-* 单击
-
-  ```java
-  public boolean onTouchEvent(@NonNull MotionEvent ev) {
-    switch (action & MotionEvent.ACTION_MASK) {
-        case MotionEvent.ACTION_UP:
-        	if (mIsDoubleTapping) {
-            // 非双击second_down -> second_up之间
-          } else if (mInLongPress) {
-            // 非长按中
-          } else {
-            // 执行单击回调
-            handled = mListener.onSingleTapUp(ev);
-          }
-    }
-    return handled;
-  }
-  ```
-
-* 长按
-
-  ```java
-  // 是否支持长按标志位
-  private boolean mIsLongpressEnabled;
-  
-  // 对外暴露设置的接口
-  public boolean isLongpressEnabled() {
-    return mIsLongpressEnabled;
-  }
-  
-  private void init(Context context) {
-    // 默认值是true
-    mIsLongpressEnabled = true;
-  }
-  
-  public boolean onTouchEvent(@NonNull MotionEvent ev) {
-    switch (action & MotionEvent.ACTION_MASK) {
-        case MotionEvent.ACTION_DOWN:
-        	// 支持长按
-        	if (mIsLongpressEnabled) {
-            // 先删除长按消息
-            mHandler.removeMessages(LONG_PRESS);
-            // 长按生效时刻
-            int time = mCurrentDownEvent.getDownTime() + ViewConfiguration.getLongPressTimeout();
-            // 直接指定时间(sendMessageAtTime)执行
-            mHandler.sendMessageAtTime(LONG_PRESS, time)
-          }
-        	// 标记位为false
-        	mInLongPress = false;
-        case MotionEvent.ACTION_MOVE:
-        	if (distance > slopSquare) {
-            // 移动得太远取消长按
-            mHandler.removeMessages(LONG_PRESS);
-          }
-       	case MotionEvent.ACTION_UP:
-        	if (mIsDoubleTapping) {
-            // 非双击 second_down -> second_up之间
-          } else if (mInLongPress) {
-            // 松手时置标记位为false
-            mInLongPress = false;
-          }
-        	// 太早松手的case
-        	mHandler.removeMessages(LONG_PRESS);
-    }
-    return handled;
-  }
-  
-  private class GestureHandler extends Handler {
-    @Override
-    public void handleMessage(Message msg) {
-      switch (msg.what) {
-          case LONG_PRESS:
-          	// 执行长按
-          	dispatchLongPress();
-          	break;
-      }
-    }
-  }
-  
-  private void dispatchLongPress() {
-    // 标志位置真
-    mInLongPress = true;
-    // 真正的执行
-    mListener.onLongPress(mCurrentDownEvent);
-  }
-  ```
-
-* fling
-
-  ```java
-  public boolean onTouchEvent(@NonNull MotionEvent ev) {
-    switch (action & MotionEvent.ACTION_MASK) {
-       	case MotionEvent.ACTION_UP:
-        	if (mIsDoubleTapping) {
-            // 非双击 second_down -> second_up之间
-          } else if (mInLongPress) {
-            // 非长按中
-          } else if (mAlwaysInTapRegion) {
-            // 非在点击 down -> up 的规定距离内
-          } else {
-            // x/y 方向的加速度足够
-            if ((Math.abs(velocityY) > mMinimumFlingVelocity) 
-                || (Math.abs(velocityX) > mMinimumFlingVelocity)) {
-              // 执行fling回调
-              handled = mListener.onFling(mCurrentDownEvent, ev, velocityX, velocityY);
-            }
-          }
-    }
-    return handled;
-  }
-  ```
-
-  * 什么是fling? -> 一种滑动动作，一般是用户快速的滑动
-  * 特点？ -> 从`ACTION_DOWN`开始，中间一系列`ACTION_MOVE`，到`ACTION_UP`结束。速度越快，`fling`越大
-  * 接口 -> `boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY);`    
-    * e1 -> The first down motion event
-    * e2 -> The last up motion event
-    * velocityX/Y -> The velocity of this fling measured in pixels per second along the x/y axis.  
-
-* scroll
-
-  ```java
-  // 用于计算scroll的临时变量
-  private float mLastFocusX;
-  private float mLastFocusY;
-  
-  public boolean onTouchEvent(@NonNull MotionEvent ev) {
-    // Determine focal point
-    float sumX = 0, sumY = 0;
-    final int count = ev.getPointerCount();
-    for (int i = 0; i < count; i++) {
-      if (skipIndex == i) continue;
-      sumX += ev.getX(i);
-      sumY += ev.getY(i);
-    }
-    final int div = pointerUp ? count - 1 : count;
-    // 得到focusX, focusY。其实就是所有手指的平均数
-    final float focusX = sumX / div;
-    final float focusY = sumY / div;
-    
-    switch (action & MotionEvent.ACTION_MASK) {
-       	case MotionEvent.ACTION_MOVE:
-        	float scrollX = mLastFocusX - focusX;
-          float scrollY = mLastFocusY - focusY;
-        	// 距离大于单击的范围
-        	if (distance > slopSquare) {
-            // 执行onScroll回调
-            handled = mListener.onScroll(mCurrentDownEvent, ev, scrollX, scrollY);
-            // 更新临时变量
-            mLastFocusX = focusX;	
-            mLastFocusY = focusY;
-          }
-    }
-    return handled;
-  }
-  ```
-
-  * 接口 -> `boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY);`
-    1. e1 -> The first down motion event
-    2. e2 -> The move motion event
-    3. distanceX/Y -> The distance along the X/Y axis that has been scrolled since the last call to onScroll. This is NOT the distance between e1 and e2.
-
-### 单双击隔离
-
-* 看源代码`DoubleClickListener`，核心思想还是先`postDelay()`然后再移除
-
-### ViewFlipper
-
-* 是什么 -> 一个`FrameLayout`，最多只能显示一个`child`
-* 核心api
-  1. `public void setDisplayedChild(int whichChild)`
-  2. `public void setInAnimation(Animation inAnimation)`
-  3. `public void setOutAnimation(Animation outAnimation)`
-
-***
-
-## CBGLSurfaceView
-
-* 详见`Video`
-
-***
-
-## CBHaptic
-
-### 如何触发震动
-
-1. 在`AndroidManifest.xml`中声明需要震动权限
-
-2. 使用`getSystemSerivce()`
-
-   ```kotlin
-   (getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator)?.vibrate(VibrationEffect.createOneShot(300L, 100))
-   ```
-
-***
-
-## CBPinch
-
-### matrix
-
-* 是什么
-
-  *  一个`3*3`的矩阵
-  * `scaletype`的一种类型
-
-* 模型
-
-  ```bash
-  scaleX, skewX, translateX
-  skewY, scaleY, translateY
-  0, 0, 1
-  ```
-
-* 能实现的变换
-
-  1. scale
-  2. translate
-  3. skew
-  4. rotate
-
-* api
-
-  * `public void set(Matrix src)`
-  * `public boolean postTranslate(float dx, float dy)`
-  * `public boolean postScale(float sx, float sy, float px, float py)`
-
-* 延伸
-
-  * 其他的7种`scaletype`，源码都是通过设置`matrix`来实现的
-
-### 多点触控
-
-* 多指相关Action
-  * `ACTION_POINTER_DOWN` -> A non-primary pointer has gone down
-  * `ACTION_POINTER_UP` -> A non-primary pointer has gone up
-* 一个`MotionEvent`包含多个手指，可以通过传入`pointerIndex`获取
-  * `public final float getX(int pointerIndex)`
-
-***
-
-## CBRotateSave
-
-### onSaveInstanceState
-
-1. 只有在意外退出时才会调用此方法，用户强意愿的主动退出不会调用此方法
-2. 在`override fun onSaveInstanceState(outState: Bundle)`中写值，在`override fun onCreate(savedInstanceState: Bundle?)`中取值
-
-***
-
-## CBSendEmailAttachments
-
-### 发送邮件并携带附件
-
-```kotlin
-val intent = Intent(Intent.ACTION_SEND).apply {
-  putExtra(Intent.EXTRA_SUBJECT, "Intent.EXTRA_SUBJECT")
-  putExtra(Intent.EXTRA_EMAIL, arrayOf("izumisakai-zy@outlook.com", "izumisakai.zy@gmail.com"))
-  putExtra(Intent.EXTRA_TEXT, "Intent.EXTRA_TEXT")
-  //把它注释掉，因为'path' 路径会crash
-  //putExtra(Intent.EXTRA_STREAM, Uri.fromFile(File("path")))
-  type = " text/plain"
-}
-
-startActivity(intent)
-```
-
-***
-
-## CBSerivce
-
-### 自定义一个service
-
-1. 写一个Service类，继承`Service()`
-
-2. 在`AndroidManifest.xml`中进行声明
-
-   ```xml
-   <service
-       android:name=".TrackService"
-       android:enabled="true"
-       android:exported="true" />
-   ```
-
-3. 核心实现方法
-   * `public abstract IBinder onBind(Intent intent)`
-   * `public @StartResult int onStartCommand()`
-   * `public boolean onUnbind(Intent intent)`
-
-4. 在`context`中`startService(Intent service)`和`stopService(Intent name)`
-
-   * `public @Nullable ComponentName startService(Intent service)`
-   * `public boolean stopService(Intent name)`
-
-***
-
-## CBSharedPreferences
-
-### 实现原理
-
-1. `ContextImpl.java` 创建文件，将文件转换成`SharedPreferencesImpl.java`
-
-   ```java
-   public SharedPreferences getSharedPreferences(String name, int mode) {
-     File file;
-     synchronized (ContextImpl.class) { // 防多线程，上锁
-       if (mSharedPrefsPaths == null) {
-         mSharedPrefsPaths = new ArrayMap<>(); // 内存友好二分查找的ArrayMap
-       }
-       file = mSharedPrefsPaths.get(name);
-       if (file == null) { // 典型的加缓存思路
-         file = makeFilename(getPreferencesDir(), name + ".xml"); // 核心的新建逻辑
-         mSharedPrefsPaths.put(name, file);
-       }
-     }
-     return getSharedPreferences(file, mode); // 真正的获取
-   }
-   
-   private File getPreferencesDir() { // 获取此应用SP的路径
-       synchronized (mSync) {
-         if (mPreferencesDir == null) {
-           mPreferencesDir = new File(getDataDir(), "shared_prefs");
-         }
-         return ensurePrivateDirExists(f(mPreferencesDir, 0771, -1, null); // 读取文件
-       }
-   }
-   
-   public File getDataDir() { // dataPath是与包名相关联的路径
-     if (isCredentialProtectedStorage()) {
-       res = mPackageInfo.getCredentialProtectedDataDirFile();
-     } else if (isDeviceProtectedStorage()) {
-       res = mPackageInfo.getDeviceProtectedDataDirFile();
-     } else {
-       res = mPackageInfo.getDataDirFile();
-     }
-   }
-                                       
-   static File ensurePrivateDirExists(File file, int mode, int gid, String xattr) {
-     try {
-       Os.mkdir(path, mode); // 系统调用创文件
-       Os.chmod(path, mode); // 系统调用改mode为0771
-       if (gid != -1) {
-           Os.chown(path, -1, gid);
-       }
-     }
-   }
-   
-   public SharedPreferences getSharedPreferences(File file, int mode) {
-     SharedPreferencesImpl sp;
-     synchronized (ContextImpl.class) {
-       sp = new SharedPreferencesImpl(file, mode); // 真正的实现类是SharedPreferencesImpl
-     }
-   }
-   ```
-
-2. `SharedPreferencesImpl.java`
-
-   ```java
-   SharedPreferencesImpl(File file, int mode) {
-     synchronized (mLock) { mLoaded = false; }
-     new Thread("SharedPreferencesImpl-load") {
-       public void run() { loadFromDisk(); } // 直接新开一个线程去读xml文件到内存
-     }.start();
-   }
-   ```
-
-### 特点
-
-* 理论上sp实现原理是读写文件，可以用于IPC。但实际上最好别用，因为系统对它的读写有一定的缓存的策略，在内存中存在一个副本，所以多进程它是读写不可靠的。
-
-***
-
-## CBStrictMode
-
-### 是什么
-
-* StrictMode is a developer tool which detects things you might be doing by accident and brings them to your attention so you can fix them.
-
-### 作用
-
-* 为了更方便的检测出`ANR`
-
-### 使用
-
-* `StrictMode.enableDefaults()`
-
-### 示例
-
-* `SharedPreferencesImpl.java`
-
-  ```java
-  private void awaitLoadedLocked() {
-      if (!mLoaded) {
-        // Raise an explicit StrictMode onReadFromDisk for this
-        // thread, since the real read will be in a different
-        // thread and otherwise ignored by StrictMode.
-        // 从磁盘读内容时触发一下StrictMode
-        BlockGuard.getThreadPolicy().onReadFromDisk();
-      }
-  }
-  ```
-
-***
-
-## CBTextWatcher
-
-### TextChangedListener
-
-* 谁的接口 -> `TextView`
-
-* 长啥样
-
-  ```kotlin
-  public interface TextWatcher extends NoCopySpan {
-      public void beforeTextChanged(CharSequence s, int start, int count, int after);
-      public void onTextChanged(CharSequence s, int start, int before, int count);
-      public void afterTextChanged(Editable s);
-  }
-  ```
-
-* 如何加
-
-  * `public void addTextChangedListener(TextWatcher watcher)`
-
-***
-
-## CBWebView
-
-### WebView
-
-* 如何使用 -> `MainActivity#setContentView(WebView(this))`
-* 接口
-  * `public void addJavascriptInterface(Object obj, String interfaceName) {}`
-  * `public void loadUrl(String url)`
-
-### jsb
-
-* 写一个jsb
-
-  ```kotlin
-  class WebInterface(private val mContext: Context) {
-  
-      @JavascriptInterface
-      fun showToast(toast: String) {
-          Toast.makeText(mContext, toast, Toast.LENGTH_SHORT).show()
-      }
-  }
-  ```
-
-* 注入WebView
-
-  * `WebView#addJavascriptInterface(interface)`
-
-* html中使用
-
-  ```html
-  <script type="text/javascript">
-    <!--JNI方法处-->
-    function showAndroidToast(toast) {
-      WebInterface.showToast(toast);
-    }
-  </script>
-  ```
-
-### Assets
-
-* what's for? -> to store raw asset files that will be used by your app, such as fonts, HTML files, JavaScript files, styling files, database files, config files, sound files, and graphic files.
-
-* how to use? -> use apis of `AssetManager.java`
-
-  ```java
-  AssetManager assetManager = getAssets();
-  InputStream inputStream = assetManager.open("file.txt");
-  BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-  StringBuilder builder = new StringBuilder();
-  String line;
-  while ((line = reader.readLine()) != null) {
-      builder.append(line);
-  }
-  String content = builder.toString();
-  inputStream.close();
-  ```
-
-* feature
-
-  * The `assets` directory is a directory for arbitrary files that are not compiled. Asset files that are saved in the assets folder are included as-is in the APK file, without any modification, while the files saved in the `res` directory are processed and compiled into optimized binary formats at build time.
-
-* 位置 -> 在`main`下，和`java`同级
-
-* 注意事项 -> `file:///android_asset/filename.txt`的方式只能访问`assets`下面的资源
-
-***
-
-## CBWidget
-
-### 基本原理
-
-* 将`WidgetProvider`注册为一个`BroadCastReciver`，接收各种广播通知尤其是`android.appwidget.action.APPWIDGET_UPDATE`
-* 在初始化或者`update`的时候设置好各个`View`的点击事件，不过要通过`RemoteView`的`api`来设置，和传统的`View#setOnClickListener`有点不同
-
-### 使用过程 
-
-* [Create a simple widget](https://developer.android.com/develop/ui/views/appwidgets)
-
-***
-
-## Compose
+## compose
 
 * 不需要笔记，直接看代码吧
 
 ***
 
-## ConstrainLayout
+## constrain_layout
 
 ### bias
 
@@ -1171,7 +512,7 @@ startActivity(intent)
 
 ***
 
-## Coroutines
+## coroutines
 
 ### 官方文档
 
@@ -1209,6 +550,7 @@ startActivity(intent)
 ### 核心概念
 
 * CoroutineScope
+
   * `public suspend fun <R> coroutineScope(): R`
 
     * for - Creates a CoroutineScope and calls the specified suspend block with this scope. The provided scope inherits its coroutineContext from the outer scope, but overrides the context's Job.
@@ -1265,8 +607,9 @@ startActivity(intent)
       2. `fun <T> CoroutineScope.async(): Deferred<T>` - Creates a coroutine and returns its future result as an implementation of Deferred.
     * suspend - suspends, releasing the underlying thread for other usages.
       1. `runBlocking()` - Runs a new coroutine and **blocks** the current thread interruptibly until its completion.
-  
+
 * Job
+
   * what? - A background job. Conceptually, a job is a cancellable thing with a life-cycle that culminates in its completion.
   * feature
     * Jobs can be arranged into parent-child hierarchies where cancellation of a parent leads to immediate cancellation of all its children recursively.
@@ -1428,9 +771,9 @@ startActivity(intent)
   12. 后面就会经过一些队列，线程池的操作，最后调用到`BaseContinuationImpl#resumeWith()`
 
      ```kotlin
-     public final override fun resumeWith(result: Result<Any?>) {
-       val outcome = invokeSuspend(param) // 很核心的一句
-     }
+  public final override fun resumeWith(result: Result<Any?>) {
+    val outcome = invokeSuspend(param) // 很核心的一句
+  }
      ```
 
 * 状态机源代码
@@ -1762,15 +1105,56 @@ startActivity(intent)
 
 ***
 
-## EventBus
+## drawable_animate
+
+### `AnimationDrawable`使用
+
+1. 定义一个`xml`
+
+   ```xml
+   <?xml version="1.0" encoding="utf-8"?>
+   <animation-list>
+       <item android:drawable="@drawable/red" android:duration="2000" />
+       <item android:drawable="@drawable/blue" android:duration="2000" />
+       <item android:drawable="@drawable/green" android:duration="2000" />
+   </animation-list>
+   ```
+
+2. 将`xml`赋值给`View.background`
+
+3. 将`background`转成`AnimationDrawable`，然后调用`start()`方法开始动画
+
+***
+
+## elevation
+
+### 是什么
+
+* 是`View`三维的一个度量
+
+### 注意事项
+
+* 必须要有`background`的前提下设置了`elevation`才有用
+
+### 高度就是高度
+
+* `FrameLayout`中栈底的`View`会因为有`elevation`值而到栈顶
+
+***
+
+## eventBus
 
 ### [笔记链接](https://github.com/IzumiSakai-zy/various-kinds-learning/blob/master/daily-android.md)
 
-## Fresco
+***
+
+## fresco
 
 ### [笔记链接](https://github.com/IzumiSakai-zy/various-kinds-learning/blob/master/daily-android.md)
 
-## FrescoMask
+***
+
+## fresco_mask
 
 ### url -> 上屏粗流程
 
@@ -1788,6 +1172,303 @@ startActivity(intent)
 
 * 是什么 -> `Paint`的一个常量
 * 作用 -> 当对`BitMap`进行缩放时，决定像素的采样。采用双线性采样或最邻近采样
+
+***
+
+## gesture_detector
+
+### GestureDetector
+
+* 功能
+
+  * Detects various gestures(fling, doubleclick, longpress, singletapup) and events using the supplied MotionEvents.
+
+* 使用
+
+  * 创建一个`GestureDetector`
+
+  * 将`onTouchEvent`委托给它
+
+    ```kotlin
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+      return gesturedetector?.onTouchEvent(event) ?: super.onTouchEvent(event)
+    }
+    ```
+
+### 手势识别
+
+* 双击
+
+  ```java
+  // 当前的Down Event
+  private MotionEvent mCurrentDownEvent;
+  // 外部注入的双击Listener
+  private OnDoubleTapListener mDoubleTapListener;
+  // 双击时second_down是否生效标记， second_down -> second_up之间为true
+  private boolean mIsDoubleTapping;
+  
+  public boolean onTouchEvent(@NonNull MotionEvent ev) {
+    switch (action & MotionEvent.ACTION_MASK) {
+        case MotionEvent.ACTION_DOWN:
+        	// 检查是否间隔小于DOUBLE_TAP_TIMEOUT，小于就移除Tap消息
+        	boolean hadTapMessage = mHandler.hasMessages(TAP);
+          if (hadTapMessage) mHandler.removeMessages(TAP);
+        	// 1. frist_down(虽然名字是current)和first_up不为空
+        	// 2. first_down -> second_down时间check
+        	// 3. first_up -> second_down时间check，first_down -> second_down距离check
+          if ((mCurrentDownEvent != null) && (mPreviousUpEvent != null)
+              && hadTapMessage 
+              && isConsideredDoubleTap(mCurrentDownEvent, mPreviousUpEvent, ev)) {
+            mIsDoubleTapping = true;
+            // 执行second_down的回调
+            handled |= mDoubleTapListener.onDoubleTap(mCurrentDownEvent);
+            // 执行双击中回调
+            handled |= mDoubleTapListener.onDoubleTapEvent(ev);
+          } else {
+            // first_down，间隔DOUBLE_TAP_TIMEOUT(300ms) post一个信息
+            mHandler.sendEmptyMessageDelayed(TAP, DOUBLE_TAP_TIMEOUT);
+          }
+        	
+        	// 给mCurrentDownEvent赋值
+          mCurrentDownEvent = MotionEvent.obtain(ev);
+        case MotionEvent.ACTION_MOVE:
+        	if (mIsDoubleTapping) {
+            // 执行双击中回调
+            handled |= mDoubleTapListener.onDoubleTapEvent(ev);
+          }
+        case MotionEvent.ACTION_UP:
+        	if (mIsDoubleTapping) {
+            // 执行双击中回调
+            handled |= mDoubleTapListener.onDoubleTapEvent(ev);
+          } else if(...) {
+            // 单击回调优先级低于双击
+            handled = mListener.onSingleTapUp(ev);
+          }
+        	// 给mPreviousUpEvent赋值
+        	mPreviousUpEvent = currentUpEvent;
+          // up结束后将双击中标记位清除
+        	mIsDoubleTapping = false;
+    }
+    return handled;
+  }
+  
+  private boolean isConsideredDoubleTap(MotionEvent firstDown, MotionEvent firstUp, MotionEvent secondDown) {
+    // first_up -> second_down时间check，超过400ms和小于40ms都不行
+    long deltaTime = secondDown.getEventTime() - firstUp.getEventTime();
+    if (deltaTime > DOUBLE_TAP_TIMEOUT || deltaTime < DOUBLE_TAP_MIN_TIME) {
+      
+      return false;
+    }
+    
+    int deltaX = (int) firstDown.getX() - (int) secondDown.getX();
+    int deltaY = (int) firstDown.getY() - (int) secondDown.getY();
+    // first_down -> second_down距离别隔太远
+    return (deltaX * deltaX + deltaY * deltaY < mDoubleTapSlopSquare)
+  }
+  
+  private class GestureHandler extends Handler {
+    @Override
+    public void handleMessage(Message msg) {
+      switch (msg.what) {
+          case TAP:
+          	if (mDoubleTapListener != null) {
+              // first_down的回调
+              mDoubleTapListener.onSingleTapConfirmed(mCurrentDownEvent);
+            }
+      }
+    }
+  }
+  ```
+
+  * 四个动作
+    1. first_down -> `OnDoubleTapListener#onSingleTapConfirmed()` -> 在`GestureHandler`内被执行
+    2. first_up -> 
+    3. second_down -> `OnDoubleTapListener#onDoubleTap(), OnDoubleTapListener#onDoubleTapEvent() ` -> 在`onTouchEvent()#ACTION_DOWN` 内执行
+    4. second_up -> `OnDoubleTapListener#onDoubleTapEvent()` -> 在`onTouchEvent()#ACTION_UP` 内执行
+  * 设计思路
+    * 双击的真正触发是在`second_down`而不是`second_up`
+    * `first_down -> second_down` <= `300ms` && `frist_up -> second_down` <= `400ms`
+    * 双击和单击无法做到互斥，即`first_up`的时候肯定会执行单击，有可能整个双击的过程中会有一次单击和双击
+
+* 单击
+
+  ```java
+  public boolean onTouchEvent(@NonNull MotionEvent ev) {
+    switch (action & MotionEvent.ACTION_MASK) {
+        case MotionEvent.ACTION_UP:
+        	if (mIsDoubleTapping) {
+            // 非双击second_down -> second_up之间
+          } else if (mInLongPress) {
+            // 非长按中
+          } else {
+            // 执行单击回调
+            handled = mListener.onSingleTapUp(ev);
+          }
+    }
+    return handled;
+  }
+  ```
+
+* 长按
+
+  ```java
+  // 是否支持长按标志位
+  private boolean mIsLongpressEnabled;
+  
+  // 对外暴露设置的接口
+  public boolean isLongpressEnabled() {
+    return mIsLongpressEnabled;
+  }
+  
+  private void init(Context context) {
+    // 默认值是true
+    mIsLongpressEnabled = true;
+  }
+  
+  public boolean onTouchEvent(@NonNull MotionEvent ev) {
+    switch (action & MotionEvent.ACTION_MASK) {
+        case MotionEvent.ACTION_DOWN:
+        	// 支持长按
+        	if (mIsLongpressEnabled) {
+            // 先删除长按消息
+            mHandler.removeMessages(LONG_PRESS);
+            // 长按生效时刻
+            int time = mCurrentDownEvent.getDownTime() + ViewConfiguration.getLongPressTimeout();
+            // 直接指定时间(sendMessageAtTime)执行
+            mHandler.sendMessageAtTime(LONG_PRESS, time)
+          }
+        	// 标记位为false
+        	mInLongPress = false;
+        case MotionEvent.ACTION_MOVE:
+        	if (distance > slopSquare) {
+            // 移动得太远取消长按
+            mHandler.removeMessages(LONG_PRESS);
+          }
+       	case MotionEvent.ACTION_UP:
+        	if (mIsDoubleTapping) {
+            // 非双击 second_down -> second_up之间
+          } else if (mInLongPress) {
+            // 松手时置标记位为false
+            mInLongPress = false;
+          }
+        	// 太早松手的case
+        	mHandler.removeMessages(LONG_PRESS);
+    }
+    return handled;
+  }
+  
+  private class GestureHandler extends Handler {
+    @Override
+    public void handleMessage(Message msg) {
+      switch (msg.what) {
+          case LONG_PRESS:
+          	// 执行长按
+          	dispatchLongPress();
+          	break;
+      }
+    }
+  }
+  
+  private void dispatchLongPress() {
+    // 标志位置真
+    mInLongPress = true;
+    // 真正的执行
+    mListener.onLongPress(mCurrentDownEvent);
+  }
+  ```
+
+* fling
+
+  ```java
+  public boolean onTouchEvent(@NonNull MotionEvent ev) {
+    switch (action & MotionEvent.ACTION_MASK) {
+       	case MotionEvent.ACTION_UP:
+        	if (mIsDoubleTapping) {
+            // 非双击 second_down -> second_up之间
+          } else if (mInLongPress) {
+            // 非长按中
+          } else if (mAlwaysInTapRegion) {
+            // 非在点击 down -> up 的规定距离内
+          } else {
+            // x/y 方向的加速度足够
+            if ((Math.abs(velocityY) > mMinimumFlingVelocity) 
+                || (Math.abs(velocityX) > mMinimumFlingVelocity)) {
+              // 执行fling回调
+              handled = mListener.onFling(mCurrentDownEvent, ev, velocityX, velocityY);
+            }
+          }
+    }
+    return handled;
+  }
+  ```
+
+  * 什么是fling? -> 一种滑动动作，一般是用户快速的滑动
+  * 特点？ -> 从`ACTION_DOWN`开始，中间一系列`ACTION_MOVE`，到`ACTION_UP`结束。速度越快，`fling`越大
+  * 接口 -> `boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY);`    
+    * e1 -> The first down motion event
+    * e2 -> The last up motion event
+    * velocityX/Y -> The velocity of this fling measured in pixels per second along the x/y axis.  
+
+* scroll
+
+  ```java
+  // 用于计算scroll的临时变量
+  private float mLastFocusX;
+  private float mLastFocusY;
+  
+  public boolean onTouchEvent(@NonNull MotionEvent ev) {
+    // Determine focal point
+    float sumX = 0, sumY = 0;
+    final int count = ev.getPointerCount();
+    for (int i = 0; i < count; i++) {
+      if (skipIndex == i) continue;
+      sumX += ev.getX(i);
+      sumY += ev.getY(i);
+    }
+    final int div = pointerUp ? count - 1 : count;
+    // 得到focusX, focusY。其实就是所有手指的平均数
+    final float focusX = sumX / div;
+    final float focusY = sumY / div;
+    
+    switch (action & MotionEvent.ACTION_MASK) {
+       	case MotionEvent.ACTION_MOVE:
+        	float scrollX = mLastFocusX - focusX;
+          float scrollY = mLastFocusY - focusY;
+        	// 距离大于单击的范围
+        	if (distance > slopSquare) {
+            // 执行onScroll回调
+            handled = mListener.onScroll(mCurrentDownEvent, ev, scrollX, scrollY);
+            // 更新临时变量
+            mLastFocusX = focusX;	
+            mLastFocusY = focusY;
+          }
+    }
+    return handled;
+  }
+  ```
+
+  * 接口 -> `boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY);`
+    1. e1 -> The first down motion event
+    2. e2 -> The move motion event
+    3. distanceX/Y -> The distance along the X/Y axis that has been scrolled since the last call to onScroll. This is NOT the distance between e1 and e2.
+
+### 单双击隔离
+
+* 看源代码`DoubleClickListener`，核心思想还是先`postDelay()`然后再移除
+
+### ViewFlipper
+
+* 是什么 -> 一个`FrameLayout`，最多只能显示一个`child`
+* 核心api
+  1. `public void setDisplayedChild(int whichChild)`
+  2. `public void setInAnimation(Animation inAnimation)`
+  3. `public void setOutAnimation(Animation outAnimation)`
+
+***
+
+## gl_surface_view
+
+* 详见`Video`
 
 ***
 
@@ -1920,19 +1601,33 @@ startActivity(intent)
 
 ***
 
-## LifeCycleOwner
+## haptic
+
+### 如何触发震动
+
+1. 在`AndroidManifest.xml`中声明需要震动权限
+
+2. 使用`getSystemSerivce()`
+
+   ```kotlin
+   (getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator)?.vibrate(VibrationEffect.createOneShot(300L, 100))
+   ```
+
+***
+
+## life_cycle_owner
 
 ### [笔记链接](https://github.com/IzumiSakai-zy/various-kinds-learning/blob/master/daily-android.md)
 
 ***
 
-## LiveData
+## live_data
 
 ### [笔记链接](https://github.com/IzumiSakai-zy/various-kinds-learning/blob/master/daily-android.md)
 
 ***
 
-## MeasureLayoutDraw
+## measure_layout_draw
 
 ### purpose
 
@@ -1948,7 +1643,7 @@ startActivity(intent)
   *  This method must be called by onMeasure(int, int) to store the measured width and measured height.
 * `boolean setFrame(int left, int top, int right, int bottom)` 
   * Assign a size and position to this view.
-  *  This is called from layout.
+  * This is called from layout.
 * `convas?.drawxxx()`
 
 ### recursive？
@@ -2337,7 +2032,7 @@ startActivity(intent)
 
 ***
 
-## MotionEventDispatch
+## motion_event_dispatch
 
 ### Motion相关
 
@@ -2678,6 +2373,7 @@ startActivity(intent)
        }
        dispatchSetPressed(pressed);
      }
+     ```
 
 * 长按
 
@@ -2872,7 +2568,7 @@ startActivity(intent)
 
 ***
 
-## NegativeMargin
+## negative_margin
 
 ### margin
 
@@ -3465,6 +3161,50 @@ startActivity(intent)
 
 ***
 
+## pinch
+
+### matrix
+
+* 是什么
+
+  *  一个`3*3`的矩阵
+  * `scaletype`的一种类型
+
+* 模型
+
+  ```bash
+  scaleX, skewX, translateX
+  skewY, scaleY, translateY
+  0, 0, 1
+  ```
+
+* 能实现的变换
+
+  1. scale
+  2. translate
+  3. skew
+  4. rotate
+
+* api
+
+  * `public void set(Matrix src)`
+  * `public boolean postTranslate(float dx, float dy)`
+  * `public boolean postScale(float sx, float sy, float px, float py)`
+
+* 延伸
+
+  * 其他的7种`scaletype`，源码都是通过设置`matrix`来实现的
+
+### 多点触控
+
+* 多指相关Action
+  * `ACTION_POINTER_DOWN` -> A non-primary pointer has gone down
+  * `ACTION_POINTER_UP` -> A non-primary pointer has gone up
+* 一个`MotionEvent`包含多个手指，可以通过传入`pointerIndex`获取
+  * `public final float getX(int pointerIndex)`
+
+***
+
 ## proguard
 
 ### reference
@@ -3475,11 +3215,12 @@ startActivity(intent)
 ### features
 
 * four functions
+
   1. Code shrinking - detects and safely removes unused classes, fields, methods, and attributes from your app and its library dependencies.
   2. Resource shrinking - removes unused resources from your packaged app, including unused resources in your app’s library dependencies. 
   3. Obfuscation - shortens the name of classes and members, which results in reduced DEX file sizes.
-  3. Optimization - inspects and rewrites your code to further reduce the size of your app’s DEX files. For example, if R8 detects that the `else {}` branch for a given if/else statement is never taken, R8 removes the code for the `else {}` branch.
-  
+  4. Optimization - inspects and rewrites your code to further reduce the size of your app’s DEX files. For example, if R8 detects that the `else {}` branch for a given if/else statement is never taken, R8 removes the code for the `else {}` branch.
+
 * R8 - it is the default compiler that converts your project’s Java bytecode into the DEX format that runs on the Android platform.
 
 * how to use
@@ -3503,7 +3244,7 @@ startActivity(intent)
 
 * config
 
-  *  add a `-keep` line in the ProGuard rules file.
+  * add a `-keep` line in the ProGuard rules file.
 
     ```bash
     -keep public class MyClass
@@ -3805,13 +3546,22 @@ startActivity(intent)
 
 ***
 
+## rotate_save
+
+### onSaveInstanceState
+
+1. 只有在意外退出时才会调用此方法，用户强意愿的主动退出不会调用此方法
+2. 在`override fun onSaveInstanceState(outState: Bundle)`中写值，在`override fun onCreate(savedInstanceState: Bundle?)`中取值
+
+***
+
 ## rxjava
 
 ### flatMap使用
 
 ***
 
-## Scroll
+## scroll
 
 ### View
 
@@ -3914,7 +3664,7 @@ public boolean onTouchEvent(MotionEvent ev) {
 
 ***
 
-## SelfDefineView
+## self_define_view
 
 ### xml自定义属性
 
@@ -3924,7 +3674,54 @@ public boolean onTouchEvent(MotionEvent ev) {
 
 ***
 
-## ShadowBackground
+## send_email_attachments
+
+### 发送邮件并携带附件
+
+```kotlin
+val intent = Intent(Intent.ACTION_SEND).apply {
+  putExtra(Intent.EXTRA_SUBJECT, "Intent.EXTRA_SUBJECT")
+  putExtra(Intent.EXTRA_EMAIL, arrayOf("izumisakai-zy@outlook.com", "izumisakai.zy@gmail.com"))
+  putExtra(Intent.EXTRA_TEXT, "Intent.EXTRA_TEXT")
+  //把它注释掉，因为'path' 路径会crash
+  //putExtra(Intent.EXTRA_STREAM, Uri.fromFile(File("path")))
+  type = " text/plain"
+}
+
+startActivity(intent)
+```
+
+***
+
+## serivce
+
+### 自定义一个service
+
+1. 写一个Service类，继承`Service()`
+
+2. 在`AndroidManifest.xml`中进行声明
+
+   ```xml
+   <service
+       android:name=".TrackService"
+       android:enabled="true"
+       android:exported="true" />
+   ```
+
+3. 核心实现方法
+
+   * `public abstract IBinder onBind(Intent intent)`
+   * `public @StartResult int onStartCommand()`
+   * `public boolean onUnbind(Intent intent)`
+
+4. 在`context`中`startService(Intent service)`和`stopService(Intent name)`
+
+   * `public @Nullable ComponentName startService(Intent service)`
+   * `public boolean stopService(Intent name)`
+
+***
+
+## shadow_background
 
 ### svg
 
@@ -3939,7 +3736,7 @@ public boolean onTouchEvent(MotionEvent ev) {
 
 ***
 
-## ShareElement
+## share_animation
 
 ### reference
 
@@ -3993,7 +3790,115 @@ public boolean onTouchEvent(MotionEvent ev) {
 
 ***
 
-## SurfaceView
+## shared_preferences
+
+### 实现原理
+
+1. `ContextImpl.java` 创建文件，将文件转换成`SharedPreferencesImpl.java`
+
+   ```java
+   public SharedPreferences getSharedPreferences(String name, int mode) {
+     File file;
+     synchronized (ContextImpl.class) { // 防多线程，上锁
+       if (mSharedPrefsPaths == null) {
+         mSharedPrefsPaths = new ArrayMap<>(); // 内存友好二分查找的ArrayMap
+       }
+       file = mSharedPrefsPaths.get(name);
+       if (file == null) { // 典型的加缓存思路
+         file = makeFilename(getPreferencesDir(), name + ".xml"); // 核心的新建逻辑
+         mSharedPrefsPaths.put(name, file);
+       }
+     }
+     return getSharedPreferences(file, mode); // 真正的获取
+   }
+   
+   private File getPreferencesDir() { // 获取此应用SP的路径
+       synchronized (mSync) {
+         if (mPreferencesDir == null) {
+           mPreferencesDir = new File(getDataDir(), "shared_prefs");
+         }
+         return ensurePrivateDirExists(f(mPreferencesDir, 0771, -1, null); // 读取文件
+       }
+   }
+   
+   public File getDataDir() { // dataPath是与包名相关联的路径
+     if (isCredentialProtectedStorage()) {
+       res = mPackageInfo.getCredentialProtectedDataDirFile();
+     } else if (isDeviceProtectedStorage()) {
+       res = mPackageInfo.getDeviceProtectedDataDirFile();
+     } else {
+       res = mPackageInfo.getDataDirFile();
+     }
+   }
+                                       
+   static File ensurePrivateDirExists(File file, int mode, int gid, String xattr) {
+     try {
+       Os.mkdir(path, mode); // 系统调用创文件
+       Os.chmod(path, mode); // 系统调用改mode为0771
+       if (gid != -1) {
+           Os.chown(path, -1, gid);
+       }
+     }
+   }
+   
+   public SharedPreferences getSharedPreferences(File file, int mode) {
+     SharedPreferencesImpl sp;
+     synchronized (ContextImpl.class) {
+       sp = new SharedPreferencesImpl(file, mode); // 真正的实现类是SharedPreferencesImpl
+     }
+   }
+   ```
+
+2. `SharedPreferencesImpl.java`
+
+   ```java
+   SharedPreferencesImpl(File file, int mode) {
+     synchronized (mLock) { mLoaded = false; }
+     new Thread("SharedPreferencesImpl-load") {
+       public void run() { loadFromDisk(); } // 直接新开一个线程去读xml文件到内存
+     }.start();
+   }
+   ```
+
+### 特点
+
+* 理论上sp实现原理是读写文件，可以用于IPC。但实际上最好别用，因为系统对它的读写有一定的缓存的策略，在内存中存在一个副本，所以多进程它是读写不可靠的。
+
+***
+
+## strict_mode
+
+### 是什么
+
+* StrictMode is a developer tool which detects things you might be doing by accident and brings them to your attention so you can fix them.
+
+### 作用
+
+* 为了更方便的检测出`ANR`
+
+### 使用
+
+* `StrictMode.enableDefaults()`
+
+### 示例
+
+* `SharedPreferencesImpl.java`
+
+  ```java
+  private void awaitLoadedLocked() {
+      if (!mLoaded) {
+        // Raise an explicit StrictMode onReadFromDisk for this
+        // thread, since the real read will be in a different
+        // thread and otherwise ignored by StrictMode.
+        // 从磁盘读内容时触发一下StrictMode
+        BlockGuard.getThreadPolicy().onReadFromDisk();
+      }
+  }
+  ```
+
+***
+
+## surface_view
 
 ### 核心与相关联的类
 
@@ -4310,7 +4215,37 @@ public boolean onTouchEvent(MotionEvent ev) {
 
 ***
 
-## ViewCoordinate
+## text_watcher
+
+### TextChangedListener
+
+* 谁的接口 -> `TextView`
+
+* 长啥样
+
+  ```kotlin
+  public interface TextWatcher extends NoCopySpan {
+      public void beforeTextChanged(CharSequence s, int start, int count, int after);
+      public void onTextChanged(CharSequence s, int start, int before, int count);
+      public void afterTextChanged(Editable s);
+  }
+  ```
+
+* 如何加
+
+  * `public void addTextChangedListener(TextWatcher watcher)`
+
+***
+
+## video
+
+### VideoView使用
+
+* 自己看代码吧
+
+***
+
+## view_coordinate
 
 ### 坐标
 
@@ -4326,15 +4261,7 @@ public boolean onTouchEvent(MotionEvent ev) {
 
 ***
 
-## Video
-
-### VideoView使用
-
-* 自己看代码吧
-
-***
-
-## ViewStub
+## view_stub
 
 ### xml写法
 
@@ -4373,7 +4300,7 @@ class MainActivity : AppCompatActivity() {
 
 ***
 
-## ViewTreeObserver
+## view_tree_observer
 
 ### 类关系
 
@@ -4461,7 +4388,87 @@ class MainActivity : AppCompatActivity() {
 
 ***
 
-## WindowManager
+## web_view
+
+### WebView
+
+* 如何使用 -> `MainActivity#setContentView(WebView(this))`
+* 接口
+  * `public void addJavascriptInterface(Object obj, String interfaceName) {}`
+  * `public void loadUrl(String url)`
+
+### jsb
+
+* 写一个jsb
+
+  ```kotlin
+  class WebInterface(private val mContext: Context) {
+  
+      @JavascriptInterface
+      fun showToast(toast: String) {
+          Toast.makeText(mContext, toast, Toast.LENGTH_SHORT).show()
+      }
+  }
+  ```
+
+* 注入WebView
+
+  * `WebView#addJavascriptInterface(interface)`
+
+* html中使用
+
+  ```html
+  <script type="text/javascript">
+    <!--JNI方法处-->
+    function showAndroidToast(toast) {
+      WebInterface.showToast(toast);
+    }
+  </script>
+  ```
+
+### Assets
+
+* what's for? -> to store raw asset files that will be used by your app, such as fonts, HTML files, JavaScript files, styling files, database files, config files, sound files, and graphic files.
+
+* how to use? -> use apis of `AssetManager.java`
+
+  ```java
+  AssetManager assetManager = getAssets();
+  InputStream inputStream = assetManager.open("file.txt");
+  BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+  StringBuilder builder = new StringBuilder();
+  String line;
+  while ((line = reader.readLine()) != null) {
+      builder.append(line);
+  }
+  String content = builder.toString();
+  inputStream.close();
+  ```
+
+* feature
+
+  * The `assets` directory is a directory for arbitrary files that are not compiled. Asset files that are saved in the assets folder are included as-is in the APK file, without any modification, while the files saved in the `res` directory are processed and compiled into optimized binary formats at build time.
+
+* 位置 -> 在`main`下，和`java`同级
+
+* 注意事项 -> `file:///android_asset/filename.txt`的方式只能访问`assets`下面的资源
+
+***
+
+## widget
+
+### 基本原理
+
+* 将`WidgetProvider`注册为一个`BroadCastReciver`，接收各种广播通知尤其是`android.appwidget.action.APPWIDGET_UPDATE`
+* 在初始化或者`update`的时候设置好各个`View`的点击事件，不过要通过`RemoteView`的`api`来设置，和传统的`View#setOnClickListener`有点不同
+
+### 使用过程 
+
+* [Create a simple widget](https://developer.android.com/develop/ui/views/appwidgets)
+
+***
+
+## window_manager
 
 ### links
 
@@ -4793,5 +4800,10 @@ class MainActivity : AppCompatActivity() {
    }
    ```
 
-   
+
+
+
+
+
+## 
 
