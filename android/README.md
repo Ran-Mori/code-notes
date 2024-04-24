@@ -3272,6 +3272,154 @@ fun dp2px(context: Context, dp: Int): Float =
 
 ***
 
+## render
+
+### createCanvas
+
+```c++
+// android.graphics.RecordingCanvas
+public final class RecordingCanvas extends BaseRecordingCanvas {
+	// constructor
+  private RecordingCanvas(RenderNode node, int width, int height) {
+    super(nCreateDisplayListCanvas(node.mNativeRenderNode, width, height));
+  }
+  // jni create a canvas
+  private static native long nCreateDisplayListCanvas(long node, int width, int height);
+}
+
+// frameworks/base/libs/hwui/jni/android_graphics_DisplayListCanvas.cpp
+static jlong android_view_DisplayListCanvas_createDisplayListCanvas() {
+  // it calls Canvas::create_recording_canvas
+  return reinterpret_cast<jlong>(Canvas::create_recording_canvas(width, height, renderNode));
+}
+
+// frameworks/base/libs/hwui/hwui/Canvas.cpp
+Canvas* Canvas::create_recording_canvas(int width, int height, uirenderer::RenderNode* renderNode) {
+  // so the realy Canvas in a instance of SkiaRecordingCanvas
+  return new uirenderer::skiapipeline::SkiaRecordingCanvas(renderNode, width, height);
+}
+```
+
+### drawCircle
+
+```c++
+// android.graphics.BaseCanvas#nDrawCircle
+public abstract class BaseCanvas {
+  private static native void nDrawCircle(long nativeCanvas, float cx, float cy, float radius, long nativePaint);
+}
+
+//frameworks/base/libs/hwui/jni/android_graphics_Canvas.cpp
+static void drawCircle(JNIEnv* env, jobject, jlong canvasHandle, jfloat cx, jfloat cy) {
+  // from above, we know that get_canvas returns SkiaRecordingCanvas
+  get_canvas(canvasHandle)->drawCircle(cx, cy, radius, *paint);
+}
+
+// frameworks/base/libs/hwui/pipeline/skia/SkiaRecordingCanvas.cpp
+void SkiaRecordingCanvas::drawCircle(uirenderer::CanvasPropertyPrimitive* x) {
+  drawDrawable(mDisplayList->allocateDrawable<AnimatedCircle>(x, y, radius, paint));
+}
+// then it will OpenGL api
+```
+
+### SurfaceFlinger
+
+* structure
+
+  ![结构图片](https://img2018.cnblogs.com/blog/821933/201907/821933-20190730111306166-2128331293.png)
+
+* features
+  1. it is a daemon process in android.
+  2. It is not a part of Android SDK, but a part of AOSP.
+
+### BufferQueue
+
+* 好文链接 - [深入浅出Android BufferQueue](https://zhuanlan.zhihu.com/p/62813895)
+
+* 模型 - 生产者消费者模式
+
+  * 生产者 - 产生图像源数据，如`Surface`，截图时的`SurfaceFlinger`
+  * 消费者 - 消费图像源数据，如`SurfaceFlinger`，截图时另外的一个`BufferQueue`
+
+* BufferState
+
+  * FREE - 所有权归`BufferQueue`
+  * DEQUEUED - 所有权归生产者
+  * QUEUED - 已填充数据，但未被消费者获取，所有权归`BufferQueue`
+  * ACQUIRED - 所有权归消费者
+
+* `Surface`生产者
+
+  ```c++
+  // 获取一个Buffer来draw
+  static jlong nativeLockCanvas() {
+  	//1. 通过Surface::lock方法，获取一个合适的Buffer
+    status_t err = surface->lock(&outBuffer, dirtyRectPtr);
+    //2. 构造一个Bitmap，地址指向步骤1获取的Buffer的地址，这样在这个Bitmap上绘制的内容，直接绘制到了GraphicBuffer
+    SkBitmap bitmap;
+    //将GraphicBuffer构造成一个Bitmap，设置给Canvas
+    Canvas* nativeCanvas = GraphicsJNI::getNativeCanvas(env, canvasObj);
+    // canvas始终要调用一次setBitmap()，无论是java调还是native调
+    nativeCanvas->setBitmap(bitmap);
+  }
+  
+  static void nativeUnlockCanvasAndPost() {
+  	// detach the canvas from the surface
+  	Canvas* nativeCanvas = GraphicsJNI::getNativeCanvas(env, canvasObj);
+  	nativeCanvas->setBitmap(SkBitmap()); // 设置bitmap为另一个对象即与buffer解绑
+    err = queueBuffer(mLockedBuffer.get(), fd); // 直接将数据放入BufferQueue
+  }
+  ```
+
+### draw process
+
+```java
+// android.view.ViewRootImpl#draw
+private boolean draw(boolean fullRedrawNeeded, boolean forceDraw) {
+  // use gpu instead of cpu
+  if (isHardwareEnabled()) {
+    mAttachInfo.mThreadedRenderer.draw(mView, mAttachInfo, this);
+  }
+}
+
+// android.view.ThreadedRenderer#draw
+void draw(View view, AttachInfo attachInfo, DrawCallbacks callbacks) {
+  updateRootDisplayList(view, callbacks);
+}
+private void updateRootDisplayList(View view, DrawCallbacks callbacks) {
+  updateViewTreeDisplayList(view);
+}
+private void updateViewTreeDisplayList(View view) {
+  view.updateDisplayListIfDirty();
+}
+
+// android.view.View#updateDisplayListIfDirty
+public RenderNode updateDisplayListIfDirty() {
+  final RecordingCanvas canvas = renderNode.beginRecording(width, height);
+  try {
+    draw(canvas);
+  } finally {
+    renderNode.endRecording();
+  }
+  return renderNode;
+}
+
+
+```
+
+### Surface
+
+* ViewRootImple has an instance of Surface.
+
+  ```java
+  // android.view.ViewRootImpl#mSurface
+  public final Surface mSurface = new Surface();
+  
+  ```
+
+
+
+
+
 ## retrofit
 
 ### path与query
@@ -3990,8 +4138,6 @@ startActivity(intent)
     }
     ```
   
-    
-  
   * 为了解决与`window#surface`的重叠问题，`SurfaceView`是在`Z轴`的底部，通过让`window#surface`设置为透明而显示出来
   
   * `surface`绘制的线程可以自己定，可以不是主线程
@@ -4166,52 +4312,6 @@ startActivity(intent)
     })
   }
   ```
-
-
-### BufferQueue
-
-* 好文链接 - [深入浅出Android BufferQueue](https://zhuanlan.zhihu.com/p/62813895)
-
-* 模型 - 生产者消费者模式
-
-  * 生产者 - 产生图像源数据，如`Surface`，截图时的`SurfaceFlinger`
-  * 消费者 - 消费图像源数据，如`SurfaceFlinger`，截图时另外的一个`BufferQueue`
-
-* BufferState
-
-  * FREE - 所有权归`BufferQueue`
-  * DEQUEUED - 所有权归生产者
-  * QUEUED - 已填充数据，但未被消费者获取，所有权归`BufferQueue`
-  * ACQUIRED - 所有权归消费者
-
-* `Surface`生产者
-
-  ```c++
-  // 获取一个Buffer来draw
-  static jlong nativeLockCanvas() {
-  	//1. 通过Surface::lock方法，获取一个合适的Buffer
-    status_t err = surface->lock(&outBuffer, dirtyRectPtr);
-    //2. 构造一个Bitmap，地址指向步骤1获取的Buffer的地址，这样在这个Bitmap上绘制的内容，直接绘制到了GraphicBuffer
-    SkBitmap bitmap;
-    //将GraphicBuffer构造成一个Bitmap，设置给Canvas
-    Canvas* nativeCanvas = GraphicsJNI::getNativeCanvas(env, canvasObj);
-    // canvas始终要调用一次setBitmap()，无论是java调还是native调
-    nativeCanvas->setBitmap(bitmap);
-  }
-  
-  static void nativeUnlockCanvasAndPost() {
-  	// detach the canvas from the surface
-  	Canvas* nativeCanvas = GraphicsJNI::getNativeCanvas(env, canvasObj);
-  	nativeCanvas->setBitmap(SkBitmap()); // 设置bitmap为另一个对象即与buffer解绑
-    err = queueBuffer(mLockedBuffer.get(), fd); // 直接将数据放入BufferQueue
-  }
-  ```
-
-### SurfaceFlinger
-
-* SurfaceFlinger是一个开机就自动启动的进程
-
-  ![结构图片](https://img2018.cnblogs.com/blog/821933/201907/821933-20190730111306166-2128331293.png)
 
 ***
 
@@ -4682,10 +4782,10 @@ class MainActivity : AppCompatActivity() {
      public void handleResumeActivity() {
        View decor = r.window.getDecorView(); // 获取DecorView
        decor.setVisibility(View.INVISIBLE); // 设置为不可见
-       ViewManager wm = a.getWindowManager(); // 从Activity或者wm
+       ViewManager wm = a.getWindowManager(); // 从Activity获取wm
        WindowManager.LayoutParams l = r.window.getAttributes(); // 获取LayoutParams
        wm.addView(decor, l); // 尝试把整个DecorView添加进Window
-       r.activity.makeVisible(); //添加结束后最后设置为可见 
+       r.activity.makeVisible(); //添加结束后最后设置为可见
      }
    }
    ```
@@ -4799,11 +4899,3 @@ class MainActivity : AppCompatActivity() {
      }
    }
    ```
-
-
-
-
-
-
-## 
-
