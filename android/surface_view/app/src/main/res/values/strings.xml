@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">SurfaceView</string>
+    <string name="app_name">surface_view</string>
     <string name="text_view">text_view</string>
 </resources>

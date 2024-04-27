@@ -1,4 +1,4 @@
-package com.surfaceView
+package com.surfaceview
 
 import android.content.Context
 import android.graphics.Color

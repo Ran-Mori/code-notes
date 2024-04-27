@@ -4048,6 +4048,162 @@ startActivity(intent)
 
 ## surface_view
 
+### create a surface
+
+```java
+// android.view.SurfaceControl
+// Handle to an on-screen Surface managed by the system compositor.
+public final class SurfaceControl implements Parcelable {
+  
+}
+
+// android.view.ViewRootImpl
+class ViewRootImpl {
+  // hold a SurfaceControl
+  private final SurfaceControl mSurfaceControl = new SurfaceControl();
+  
+  private void performTraversals() {
+    relayoutResult = relayoutWindow(params, viewVisibility, insetsPending);
+  }
+  private int relayoutWindow(WindowManager.LayoutParams params, int viewVisibility, boolean insetsPending) {
+    // pass the surfaceControl as a parameter
+    relayoutResult = mWindowSession.relayout(mWindow, params, requestedWidth, requestedHeight, viewVisibility, mSurfaceControl)
+  }
+}
+
+
+// com.android.server.wm.Session
+public int relayout(IWindow window, WindowManager.LayoutParams attrs, SurfaceControl outSurfaceControl) {
+  // mService is WindowManagerService
+  // pass the surfaceControl as a parameter
+  int res = mService.relayoutWindow(this, window, attrs, outSurfaceControl)
+}
+
+// com.android.server.wm.WindowManagerService
+public int relayoutWindow(Session session, IWindow client, LayoutParams attrs, SurfaceControl outSurfaceControl) {
+  result = createSurfaceControl(outSurfaceControl, result, win, winAnimator);
+}
+private int createSurfaceControl(SurfaceControl outSurfaceControl, int result) {
+  WindowSurfaceController surfaceController;
+  // try to create a SurfaceController
+  surfaceController = winAnimator.createSurfaceLocked();
+  if (surfaceController != null) {
+    surfaceController.getSurfaceControl(outSurfaceControl);
+  } else {outSurfaceControl.release();
+  }
+
+  return result;
+}
+
+// com.android.server.wm.WindowStateAnimator
+WindowSurfaceController createSurfaceLocked() {
+  // create an instance of WindowSurfaceController
+  mSurfaceController = new WindowSurfaceController(attrs.getTitle().toString(), format, flags, this, attrs.type);
+}
+
+// com.android.server.wm.WindowSurfaceController
+WindowSurfaceController(String name, int format, int flags, WindowStateAnimator animator, int windowType) {
+  final SurfaceControl.Builder b = win.makeSurface()
+      .setParent(win.getSurfaceControl())
+      .setName(name)
+      .setFormat(format)
+      .setFlags(flags)
+      .setMetadata(METADATA_WINDOW_TYPE, windowType)
+      .setMetadata(METADATA_OWNER_UID, mWindowSession.mUid)
+      .setMetadata(METADATA_OWNER_PID, mWindowSession.mPid)
+      .setCallsite("WindowSurfaceController");
+  // use build pattern to create a WindowSurfaceController
+  mSurfaceControl = b.build();
+}
+
+// android.view.SurfaceControl
+private SurfaceControl(SurfaceSession session, String name) {
+  Parcel metaParcel = Parcel.obtain();
+  // jni create, pass metaParcel as a parameter
+  mNativeObject = nativeCreate(session, name, w, h, format, flags, metaParcel);
+  mNativeHandle = nativeGetHandle(mNativeObject);
+}
+
+// frameworks/base/core/jni/android_view_SurfaceControl.cpp
+static jlong nativeCreate(JNIEnv* env, jclass clazz, jobject sessionObj, jobject metadataParcel) {
+  // get data from Parcel
+  Parcel* parcel = parcelForJavaObject(env, metadataParcel);
+  // call createSurfaceChecked
+  status_t err = client->createSurfaceChecked(String8(name.c_str()), w, h, format, &surface, flags, parentHandle, std::move(metadata));
+}
+
+// frameworks/native/libs/gui/SurfaceComposerClient.cpp
+status_t SurfaceComposerClient::createSurfaceChecked(const String8& name, uint32_t w, uint32_t h) {
+  // call createSurface
+  binder::Status status = mClient->createSurface(std::string(name.c_str()), std::move(metadata));
+}
+
+// gen/aidl_library/android/gui/ISurfaceComposerClient.cpp
+BpSurfaceComposerClient::createSurface(const ::android::gui::LayerMetadata& metadata, ::android::gui::CreateSurfaceResult* _aidl_return) {
+  // use binder rpc to get a surface from SurfaceFlinger
+  _aidl_ret_status = remote()->transact(BnSurfaceComposerClient::TRANSACTION_createSurface, _aidl_data, &_aidl_reply, 0);
+  if (_aidl_ret_status == ::android::UNKNOWN_TRANSACTION && ISurfaceComposerClient::getDefaultImpl()) [[unlikely]] {
+     return ISurfaceComposerClient::getDefaultImpl()->createSurface(name, flags, parent, metadata, _aidl_return);
+  }
+}
+
+// frameworks/native/services/surfaceflinger/Client.cpp
+binder::Status Client::createSurface(const std::string& name,  const gui::LayerMetadata& metadata, gui::CreateSurfaceResult* outResult) {
+  // creat a layer from SurfaceFlinger
+  const status_t status = mFlinger->createLayer(args, *outResult);
+  return binderStatusFromStatusT(status);
+}
+
+// com.android.server.wm.WindowManagerService
+private int createSurfaceControl(SurfaceControl outSurfaceControl, int result) {
+  WindowSurfaceController surfaceController;
+  // surfaceController is returned by SurfaceFlinger
+  surfaceController = winAnimator.createSurfaceLocked();
+  if (surfaceController != null) {
+    // get a surface
+    surfaceController.getSurfaceControl(outSurfaceControl);
+  } else {
+    outSurfaceControl.release();
+  }
+  return result;
+}
+
+// com.android.server.wm.WindowSurfaceController
+void getSurfaceControl(SurfaceControl outSurfaceControl) {
+  // use copyFrom to get the Surface
+  outSurfaceControl.copyFrom(mSurfaceControl, "WindowSurfaceController.getSurfaceControl");
+}
+
+// frameworks/base/core/jni/android_view_SurfaceControl.cpp
+static jlong nativeCopyFromSurfaceControl(JNIEnv* env, jclass clazz, jlong surfaceControlNativeObj) {
+ 	// create a surface from surfaceControlNativeObj
+  sp<SurfaceControl> surface(reinterpret_cast<SurfaceControl *>(surfaceControlNativeObj));
+  sp<SurfaceControl> newSurface = new SurfaceControl(surface);
+  newSurface->incStrong((void *)nativeCreate);
+  return reinterpret_cast<jlong>(newSurface.get());
+}
+
+// android.view.ViewRootImpl
+class ViewRootImpl {
+  // hold a SurfaceControl
+  private final SurfaceControl mSurfaceControl = new SurfaceControl();
+  // hold a Surface
+  public final Surface mSurface = new Surface();
+  
+  private int relayoutWindow(WindowManager.LayoutParams params, int viewVisibility, boolean insetsPending) {
+    // pass the surfaceControl as a parameter
+    relayoutResult = mWindowSession.relayout(mWindow, params, requestedWidth, requestedHeight, viewVisibility, mSurfaceControl);
+    // now mSurfaceControl is modified by SurfaceFlinger
+    // use mSurfaceControl to create a Surface.
+    mSurface.copyFrom(mSurfaceControl);
+  }
+  private void performTraversals() {
+    // mSurface is passed to mThreadedRenderer
+    wInitialized = mAttachInfo.mThreadedRenderer.initialize(mSurface);
+  }
+}
+```
+
 ### 核心与相关联的类
 
 * Surface
@@ -4829,11 +4985,11 @@ class MainActivity : AppCompatActivity() {
 
 ### window添加进WMS
 
-1. Session#addToDisplayAsUser()
+1. com.android.server.wm.Session#addToDisplayAsUser()
 
    ```java
    // 继承Stub，是Binder IPC的server侧
-   //  There is generally one Session object per process 
+   // There is generally one Session object per process 
    class Session extends IWindowSession.Stub {
      final WindowManagerService mService; // 持有WMS
      
