@@ -118,7 +118,7 @@
 
 ## binder
 
-### 好文链接
+### reference
 
 * [Android框架分析系列](https://mr-cao.gitbooks.io/android/content/)
 
@@ -145,7 +145,7 @@
 ### 几者关系
 
 * `binder` - It is the core mechanism of the Android IPC system. It allows different processes to communicate with each other by passing messages.
-* `IBinder` - It is the interface for the `Binder` object. It defines the methods that can be used to communicate with a remote process.
+* `IBinder` - It is the interface for the `Binder` object. It defines the methods(`transact()`, `isBinderAlive()`) that can be used to communicate with a remote process.
 * `Service` - It is a component in the Android system that runs in the background and provides a set of APIs that can be accessed by other processes.
 * `client` - It is the process that uses a service provided by another process.
 * `server` - It is the process that provides a service that can be used by other processes.
@@ -231,7 +231,7 @@
    }
    ```
 
-### 特点
+### features
 
 1. `asInterface()`方法，如果当前进程有就返回当前进程的，就不用跨进程通信了；如果当前进程没有，才返回一个Proxy来跨进程通信
 
@@ -4770,6 +4770,100 @@ class ViewRootImpl {
   ```
 
 ***
+
+## system_service
+
+### reference
+
+* [理解 Context.getSystemService 原理](https://juejin.cn/post/6844903812159815687)
+
+### process
+
+* call getService()
+
+  ```java
+  // android.content.Context#getSystemService(java.lang.String)
+  public abstract @Nullable Object getSystemService(@ServiceName @NonNull String name);
+  
+  // android.app.ContextImpl#getSystemService
+  public Object getSystemService(String name) {
+    return SystemServiceRegistry.getSystemService(this, name);
+  }
+  
+  
+  ```
+
+* how does `SystemServiceRegistry` work.
+
+  ```java
+  // android.app.SystemServiceRegistry#getSystemService
+  public final class SystemServiceRegistry {
+    // store ServiceFetcher
+    private static final Map<String, ServiceFetcher<?>> SYSTEM_SERVICE_FETCHERS = new ArrayMap();
+    
+    // static block code
+    static {
+      // there are many calls of registerService() method, and it will register to SYSTEM_SERVICE_FETCHERS.
+      registerService(Context.LAYOUT_INFLATER_SERVICE, LayoutInflater.class, new CachedServiceFetcher<LayoutInflater>() {
+      @Override
+      public LayoutInflater createService(ContextImpl ctx) {
+        return new PhoneLayoutInflater(ctx.getOuterContext());
+      }});
+    }
+    
+    public static Object getSystemService(ContextImpl ctx, String name) {
+      // query ServiceFetcher by a string name.
+      final ServiceFetcher<?> fetcher = SYSTEM_SERVICE_FETCHERS.get(name);
+      // delegate the action to ServiceFetcher
+      return fetcher.getService(ctx);
+    }
+  }
+  ```
+
+* How does ServiceFetcher works. 
+
+  ```java
+  // android.app.SystemServiceRegistry.ServiceFetcher
+  static abstract interface ServiceFetcher<T> {
+    T getService(ContextImpl ctx); // only a single method
+  }
+  
+  // android.app.SystemServiceRegistry.CachedServiceFetcher
+  // it use infinite loop mechanism to make soure that there is only one instance of this service in case of mullti threads
+  // the instance will differ in ContextImpl, so it can't be accessed across process.
+  
+  // android.app.SystemServiceRegistry.StaticServiceFetcher
+  // it is a more simple way to implement ServiceFetcher
+  // the instance will not differ in ContextImpl, so it can be accessed across process.
+  ```
+
+* how really to create a service.
+
+  ```java
+  // Context.WINDOW_SERVICE
+  @Override
+  public WindowManager createService(ContextImpl ctx) {
+    return new WindowManagerImpl(ctx);
+  }
+  
+  // Context.ACTIVITY_SERVICE
+  @Override
+  public ActivityManager createService(ContextImpl ctx) {
+    return new ActivityManager(ctx.getOuterContext(), ctx.mMainThread.getHandler());
+  }
+  
+  // Context.LOCATION_SERVICE
+  @Override
+  public LocationManager createService(ContextImpl ctx) throws ServiceNotFoundException {
+    // use Binder and ServiceManager
+    IBinder b = ServiceManager.getServiceOrThrow(Context.LOCATION_SERVICE);
+    return new LocationManager(ctx, ILocationManager.Stub.asInterface(b));
+  }
+  ```
+
+### ServiceManager
+
+
 
 ## text_watcher
 
