@@ -2,6 +2,7 @@ package com.animation
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.view.animation.LinearInterpolator
@@ -56,12 +57,15 @@ class MainActivity : AppCompatActivity() {
         Animation.RELATIVE_TO_SELF,
         0.5f,
         Animation.RELATIVE_TO_SELF,
-        0.5f).apply {
+        0.5f
+    ).apply {
         duration = 100
         interpolator = LinearInterpolator()
         repeatCount = 0
         setAnimationListener(object : Animation.AnimationListener {
-            override fun onAnimationStart(animation: Animation?) {}
+            override fun onAnimationStart(animation: Animation?) {
+                Log.d("IzumiSakai", "onAnimationStart")
+            }
 
             override fun onAnimationEnd(animation: Animation?) {
                 textView?.startAnimation(rightToLeftRotate)
