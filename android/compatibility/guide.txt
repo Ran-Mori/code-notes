@@ -1,2 +1,0 @@
-# AS version ->  Chipmunk | 2021.2.1 Canary 1
-# build date -> on October 13, 2021
