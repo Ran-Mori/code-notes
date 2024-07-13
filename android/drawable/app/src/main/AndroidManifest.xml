@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.view_stub">
+    package="com.drawable">
 
     <application
         android:allowBackup="true"
@@ -11,10 +11,10 @@
         android:label="@string/app_name"
         android:roundIcon="@drawable/ic_launcher_background"
         android:supportsRtl="true"
-        android:theme="@style/Theme.BaseAndroidProject"
+        android:theme="@style/Theme.CBDrawableAnimate"
         tools:targetApi="31">
         <activity
-            android:name="com.view_stub.MainActivity"
+            android:name="com.drawable.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

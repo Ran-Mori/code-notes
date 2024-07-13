@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.Window
 import android.view.WindowManager
 import com.surface_view.gl.MyOpenGLRender
+import com.surface_view.vv.MyVideoView
 
 class MainActivity : AppCompatActivity() {
 
@@ -13,9 +14,10 @@ class MainActivity : AppCompatActivity() {
         const val TAG = "IzumiSakai"
         const val NORMAL = "normal"
         const val GL = "gl"
+        const val VIDEO_VIEW = "video_view"
     }
 
-    private var type = GL
+    private var type = VIDEO_VIEW
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,6 +30,9 @@ class MainActivity : AppCompatActivity() {
                 window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
                 val surfaceView = GLSurfaceView(this).also { it.setRenderer(MyOpenGLRender()) }
                 setContentView(surfaceView)
+            }
+            VIDEO_VIEW -> {
+                setContentView(MyVideoView(this))
             }
         }
     }

@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">ViewStub</string>
+    <string name="app_name">view_stub</string>
     <string name="text_view">text_view</string>
 </resources>
