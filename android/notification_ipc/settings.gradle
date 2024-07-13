@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "live_data"
+rootProject.name = "notification_ipc"
 include ':app'
