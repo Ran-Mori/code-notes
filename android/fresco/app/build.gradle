@@ -7,7 +7,7 @@ android {
     compileSdk 33
 
     defaultConfig {
-        applicationId "com.fresco"
+        applicationId "com.fresco_mask"
         minSdk 29
         targetSdk 33
         versionCode 1
