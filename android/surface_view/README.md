@@ -1,3 +1,175 @@
+## reference
+
+* [Graphics architecture](https://source.android.com/docs/core/graphics/architecture)
+
+## surface
+
+### source code
+
+* java层
+
+  ```java
+  public class Surface implements Parcelable {
+    long mNativeObject; // 真正的nativeSurface
+    // 持有Canvas, 但Canvas也只是native的一层包装，持有了一个native指针
+    private final Canvas mCanvas = new CompatibleCanvas(); 
+  }
+  ```
+
+* native层
+
+  ```java
+  // 构造函数需要传入一个生产者的引用，和BufferQueue的交互均有这个生产者的引用来完成
+  Surface::Surface( const sp<GraphicBufferProducer>& bufferProducer, bool controlledByApp) : mGraphicBufferProducer(bufferProducer), mGenerationNumber(0)
+  ```
+
+### features
+
+1. `Handle onto a raw buffer that is being managed by the screen compositor.`
+
+2. 继承了`Parcelable`，因此可以跨进程通信，在`WMS`中传递
+
+3. 它持有了`NativeBuffer`的指针，这个`NativieBuffer`指的是用来保存当前窗口屏幕数据的一个`buffer`
+
+4. `ViewRootImpl`持有了这个对象，即一颗`view tree`，一个`window`，共享一个`Surface`
+
+   ```java
+   public final class ViewRootImpl implements ViewParent {
+     BaseSurfaceHolder mSurfaceHolder;
+   	public final Surface mSurface = new Surface(); 
+   }
+   ```
+
+
+
+## 
+
+## SurfaceView
+
+### source code
+
+* java code
+
+  ```java
+  public class SurfaceView extends View {
+    final Surface mSurface = new Surface(); // Current surface in use
+  }
+  ```
+
+### what's for?
+
+1. When you render with an external buffer source, such as GL context or a media decoder, you need to copy buffers from the buffer source to display the buffers on the screen. Using a SurfaceView enables you to do that.
+2. When the SurfaceView's view component is about to become visible, the framework asks SurfaceControl to request a new surface from SurfaceFlinger. To receive callbacks when the surface is created or destroyed, use the SurfaceHolder interface.
+
+### featues
+
+1. The new surface is the producer side of a BufferQueue, whose consumer is a SurfaceFlinger layer. You can update the surface with any mechanism that can feed a BufferQueue, such as surface-supplied Canvas functions, attaching an EGLSurface and drawing on the surface with GLES, or configuring a media decoder to write the surface.
+2. Provides a dedicated drawing surface embedded inside of a view hierarchy.
+3. 是`View`的子类；不与`window`共享`surface`，而是自己持有一个`surface`；未重写`onDraw()`方法，即不参与绘制
+4. 为了解决与`window#surface`的重叠问题，`SurfaceView`是在`Z轴`的底部，通过让`window#surface`设置为透明而显示出来
+5. `surface`绘制的线程可以自己定，可以不是主线程
+
+### how to show
+
+1. `lockCanvas()` and `unlockCanvasAndPost()`
+
+   ```java
+   // android.view.Surface#lockCanvas
+   public Canvas lockCanvas(Rect inOutDirty) {
+     // native lock
+     mLockedObject = nativeLockCanvas(mNativeObject, mCanvas, inOutDirty);
+     return mCanvas;
+   }
+   
+   // android.view.Surface#unlockCanvasAndPost
+   public void unlockCanvasAndPost(Canvas canvas) {
+     // native unlockAndPost
+     if (mHwuiContext != null) {
+       mHwuiContext.unlockAndPost(canvas);
+     } else {
+       unlockSwCanvasAndPost(canvas);
+     }
+   }
+   ```
+
+2. provide a surface to native
+
+   * see `android.widget.VideoView`
+
+## SurfaceHolder
+
+### source code
+
+* java code
+
+  ```java
+  public class SurfaceView extends View {
+    final Surface mSurface = new Surface(); // 直接new一个Surface
+    
+    public SurfaceHolder getHolder() { return mSurfaceHolder; }
+    
+    private final SurfaceHolder mSurfaceHolder = new SurfaceHolder() {
+      public boolean isCreating() {
+       // 返回成员变量mIsCreating
+      }
+      
+      public void addCallback(Callback callback) {
+        // 操作成员变量mCallbacks
+      }
+      
+      public Canvas lockCanvas() {
+        // 将操作委托给mSurface
+      }
+      
+      public void unlockCanvasAndPost(Canvas canvas) {
+        // 将操作委托给mSurface
+      }
+      
+      public Surface getSurface() {
+        // 返回成员变量mSurface
+      }
+    }
+  }
+  ```
+
+### features
+
+1. 充当`MVC`模式中的`C`，`Surface`是`M`，`SurfaceView`是`V`
+2. `SurfaceView`持有`Surface`，但设置为`private`，外部通过`SurfaceHolder`这个`C`去控制`Surface`
+
+## VideoView
+
+### how it implemented
+
+* VideoView.java
+
+  ```java
+  public class VideoView extends SurfaceView {
+    private void openVideo() {
+      // pass the data source, see below
+      mMediaPlayer.setDataSource(mContext, mUri, mHeaders);
+      // pass the mSurfaceHolder(get surface), see below
+      mMediaPlayer.setDisplay(mSurfaceHolder);
+    }
+  }
+  ```
+
+* MediaPlayer.java
+
+  ```java
+  // android.media.MediaPlayer#_setDataSource(java.io.FileDescriptor, long, long)
+  // pass the file to native
+  private native void _setDataSource(FileDescriptor fd, long offset, long length)
+    
+  // android.media.MediaPlayer#setDisplay
+  public void setDisplay(SurfaceHolder sh) {
+    _setVideoSurface(sh.getSurface());
+    updateSurfaceScreenOn();
+  }
+  
+  // pass the surface to native
+  private native void _setVideoSurface(Surface surface);
+
 ## create a surface
 
 ```java
@@ -153,119 +325,7 @@ class ViewRootImpl {
 }
 ```
 
-## 核心与相关联的类
-
-* Surface
-
-  * `Handle onto a raw buffer that is being managed by the screen compositor.`
-
-  * 继承了`Parcelable`，因此可以跨进程通信，在`WMS`中传递
-
-  * 它持有了`NativeBuffer`的指针，这个`NativieBuffer`指的是用来保存当前窗口屏幕数据的一个`buffer`
-
-  * `ViewRootImpl`持有了这个对象，即一颗`view tree`，一个`window`，共享一个`Surface`
-
-    ```java
-    public final class ViewRootImpl implements ViewParent {
-      BaseSurfaceHolder mSurfaceHolder;
-    	public final Surface mSurface = new Surface(); 
-    }
-    ```
-
-  * java代码
-
-    ```java
-    public class Surface implements Parcelable {
-      long mNativeObject; // 真正的nativeSurface
-      // 持有Canvas, 但Canvas也只是native的一层包装，持有了一个native指针
-      private final Canvas mCanvas = new CompatibleCanvas(); 
-    }
-    ```
-
-
-  * native代码
-
-    ```c++
-    // 构造函数需要传入一个生产者的引用，和BufferQueue的交互均有这个生产者的引用来完成
-    Surface::Surface( const sp<GraphicBufferProducer>& bufferProducer, bool controlledByApp) : mGraphicBufferProducer(bufferProducer), mGenerationNumber(0)
-    ```
-
-
-* SurfaceHolder
-
-  * 充当`MVC`模式中的`C`，`Surface`是`M`，`SurfaceView`是`V`
-
-  * `SurfaceView`持有`Surface`，但设置为`private`，外部通过`SurfaceHolder`这个`C`去控制`Surface`
-
-    ```java
-    public class SurfaceView extends View {
-      final Surface mSurface = new Surface(); // 直接new一个Surface
-      
-      public SurfaceHolder getHolder() { return mSurfaceHolder; }
-      
-      private final SurfaceHolder mSurfaceHolder = new SurfaceHolder() {
-        public boolean isCreating() {
-         // 返回成员变量mIsCreating
-        }
-        
-        public void addCallback(Callback callback) {
-          // 操作成员变量mCallbacks
-        }
-        
-        public Canvas lockCanvas() {
-          // 将操作委托给mSurface
-        }
-        
-        public void unlockCanvasAndPost(Canvas canvas) {
-          // 将操作委托给mSurface
-        }
-        
-        public Surface getSurface() {
-          // 返回成员变量mSurface
-        }
-      }
-    }
-    ```
-
-
-* SurfaceView
-
-  * 太复杂了，看不懂，先贴个链接 -> [Graphics architecture](https://source.android.com/docs/core/graphics/architecture)
-
-  * `Provides a dedicated drawing surface embedded inside of a view hierarchy.`
-
-  * 是`View`的子类；不与`window`共享`surface`，而是自己持有一个`surface`；未重写`onDraw()`方法，即不参与绘制
-
-    ```java
-    public class SurfaceView extends View {
-      final Surface mSurface = new Surface(); // Current surface in use
-    }
-    ```
-
-  * 为了解决与`window#surface`的重叠问题，`SurfaceView`是在`Z轴`的底部，通过让`window#surface`设置为透明而显示出来
-
-  * `surface`绘制的线程可以自己定，可以不是主线程
-
-
-* TextureView
-
-  * 继承自`View`，它的表现就像一个普通的`View`一样
-
-  * 它没有自己的`Surface`，而是共享`ViewRootImpl`的`Surface`
-
-  * 由于没有自己的`Surface`，它的理论性能比`SurfaceView`低
-
-  * 显示的内容通过`SurfaceTexture`传递
-
-
-* SurfaceTexture
-
-  * `Captures frames from an image stream as an OpenGL ES texture.`
-
-  * 可以把`Surface`生成的图像流，转换为纹理`Texture`，供业务方进一步加工使用
-
-
-## 挖孔论
+## make a hole
 
 * 代码实现
 
@@ -312,17 +372,29 @@ class ViewRootImpl {
   }
   ```
 
-## updateSurface()
+## key methods
 
-* 调用时机
-
-  * `onPreDraw()`,`onSrcoll()`,  `ViewRootSurface#surfaceCreated()`, `ViewRootSurface#surfaceDestroyed()`, `setVisibility()`, `setFrame()`
-
-* 干了什么
+* `updateSurface()`
 
   ```java
+  // android.view.ViewTreeObserver#dispatchOnPreDraw
+  public final boolean dispatchOnPreDraw() {
+    for (int i = 0; i < count; i++) {
+      cancelDraw |= !(access.get(i).onPreDraw());
+    }
+  }
+  
+  // android.view.SurfaceView#mDrawListener
+  private final ViewTreeObserver.OnPreDrawListener mDrawListener = () -> {
+    mHaveFrame = getWidth() > 0 && getHeight() > 0;
+    updateSurface();
+    return true;
+  };
+  
+  // android.view.SurfaceView#mBlastBufferQueue
   private BLASTBufferQueue mBlastBufferQueue; // 一个队列
   
+  // android.view.SurfaceView#updateSurface
   protected void updateSurface() {
     // 定义一大堆以changed结尾的变量
     final boolean visibleChanged;
@@ -395,6 +467,7 @@ class ViewRootImpl {
     }
   }
   
+  // android.view.SurfaceView#copySurface
   private void copySurface(boolean surfaceControlCreated, boolean bufferSizeChanged) {
     // 非必要不执行
     if (!surfaceControlCreated && !needsWorkaround) { return; }
@@ -406,6 +479,7 @@ class ViewRootImpl {
     }
   }
   
+  // android.view.SurfaceView#handleSyncBufferCallback
   private void handleSyncBufferCallback(Callback[]， SyncBufferTransactionCallback) {
     getViewRootImpl().addToSync(syncBufferCallback -> {
       mBlastBufferQueue.stopContinuousSyncTransaction(); // 队列先暂停一下
@@ -417,6 +491,27 @@ class ViewRootImpl {
   }
   ```
 
-***
 
-## 
+
+
+
+
+
+## 待定
+
+* TextureView
+
+  * 继承自`View`，它的表现就像一个普通的`View`一样
+
+  * 它没有自己的`Surface`，而是共享`ViewRootImpl`的`Surface`
+
+  * 由于没有自己的`Surface`，它的理论性能比`SurfaceView`低
+
+  * 显示的内容通过`SurfaceTexture`传递
+
+
+* SurfaceTexture
+
+  * `Captures frames from an image stream as an OpenGL ES texture.`
+
+  * 可以把`Surface`生成的图像流，转换为纹理`Texture`，供业务方进一步加工使用

@@ -17,7 +17,7 @@ class MainActivity : AppCompatActivity() {
         const val VIDEO_VIEW = "video_view"
     }
 
-    private var type = VIDEO_VIEW
+    private var type = GL
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

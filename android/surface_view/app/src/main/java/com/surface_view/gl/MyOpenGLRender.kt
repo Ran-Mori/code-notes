@@ -26,7 +26,6 @@ class MyOpenGLRender: GLSurfaceView.Renderer {
         gl?.glLoadIdentity()
         GLU.gluPerspective(gl, 45.0f, width.toFloat()/height, 0.1f, 100.0f);
         gl?.glViewport(0, 0, width, height)
-
         gl?.glMatrixMode(GL10.GL_MODELVIEW)
         gl?.glLoadIdentity()
     }

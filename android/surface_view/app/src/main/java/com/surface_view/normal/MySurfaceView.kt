@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
+import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.fragment.app.FragmentActivity
@@ -14,21 +15,23 @@ class MySurfaceView @JvmOverloads constructor(
     defStyle: Int = 0
 ) : SurfaceView(context, attrs, defStyle) {
 
-    private val holderCallBack by lazy {
-        object : SurfaceHolder.Callback {
-            override fun surfaceCreated(holder: SurfaceHolder) {
-                drawThread = DrawThread(holder)
-                drawThread?.running = true
-                drawThread?.start()
-            }
+    private val holderCallBack = object : SurfaceHolder.Callback {
+        override fun surfaceCreated(holder: SurfaceHolder) {
+            Log.d("IzumiSakai", "surfaceCreated call holder = ${holder}")
+            drawThread = DrawThread(holder)
+            drawThread?.running = true
+            drawThread?.start()
+        }
 
-            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
+        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+            Log.d("IzumiSakai", "surfaceChanged call holder = ${holder}, format = ${format}, width = ${width}, height = ${height}")
+        }
 
-            override fun surfaceDestroyed(holder: SurfaceHolder) {
-                // Stop draw thread
-                drawThread?.running = false
-                drawThread = null
-            }
+        override fun surfaceDestroyed(holder: SurfaceHolder) {
+            // Stop draw thread
+            drawThread?.running = false
+            drawThread = null
+            Log.d("IzumiSakai", "surfaceDestroyed call holder = ${holder}")
         }
     }
 
