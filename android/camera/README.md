@@ -1,5 +1,10 @@
 # camera
 
+## reference
+
+* [Android Camera 编程从入门到精通](https://www.jianshu.com/p/f63f296a920b)
+* [Android相机开发——CameraView源码解析](https://www.jianshu.com/p/0ac7234dcefc)
+
 ## FutureChain
 
 * run order
@@ -99,37 +104,6 @@
    }
    ```
 
-## open camera
-
-1. binder ipc
-
-   ```java
-   // android.hardware.camera2.CameraManager.CameraManagerGlobal#connectCameraServiceLocked
-   private void connectCameraServiceLocked() {
-     IBinder cameraServiceBinder = ServiceManager.getService(CAMERA_SERVICE_BINDER_NAME);
-     // binder ipc
-     ICameraService cameraService = ICameraService.Stub.asInterface(cameraServiceBinder);
-     CameraStatus[] cameraStatuses = cameraService.addListener(this);
-     for (CameraStatus c : cameraStatuses) {
-       onCameraOpenedLocked(c.cameraId, c.clientPackage);
-     }
-   }
-   ```
-
-2. open
-
-   ```java
-   // android.hardware.camera2.CameraManager#openCameraDeviceUserAsync
-   private CameraDevice openCameraDeviceUserAsync(String cameraId, CameraDevice.StateCallback callback) {
-     android.hardware.camera2.impl.CameraDeviceImpl deviceImpl = new CameraDeviceImpl(cameraId, callback);
-     // this cameraService is the service mentioned above
-     ICameraService cameraService = CameraManagerGlobal.get().getCameraService();
-     ICameraDeviceUser cameraUser = cameraService.connectDevice(callbacks, cameraId, mContext.getOpPackageName());
-     deviceImpl.setRemoteDevice(cameraUser);
-     device = deviceImpl;
-   }
-   ```
-
 ## camera2 api
 
 * what is?
@@ -207,4 +181,143 @@
   }, null);
   ```
 
-  
+
+## how preview
+
+1. query all available camera hardware devices
+
+   ```java
+   // android.hardware.camera2.CameraManager.CameraManagerGlobal#connectCameraServiceLocked
+   private void connectCameraServiceLocked() {
+     // use binder ipc to get cameraServiceBinder
+     IBinder cameraServiceBinder = ServiceManager.getService(CAMERA_SERVICE_BINDER_NAME);
+     // call addListener to query camera status of current device
+     CameraStatus[] cameraStatuses = cameraService.addListener(this);
+   }
+   
+   // frameworks/av/services/camera/libcameraservice/CameraService.cpp
+   Status CameraService::addListener(const sp<ICameraServiceListener>& listener, std::vector<hardware::CameraStatus> *cameraStatuses) {
+       return addListenerHelper(listener, cameraStatuses);
+   }
+   
+   // frameworks/base/core/java/android/hardware/CameraStatus.java
+   public class CameraStatus implements Parcelable {
+       public String cameraId; // specify different camera devices
+       public int status;
+       public String[] unavailablePhysicalCameras;
+       public String clientPackage;
+   }
+   ```
+
+2. open camera
+
+   ```java
+   // android.hardware.camera2.CameraManager#openCameraDeviceUserAsync
+   private CameraDevice openCameraDeviceUserAsync(String cameraId, // open which camera
+   	CameraDevice.StateCallback callback // open success or fail callback
+   ) { 
+     // wrap to a impl
+   	android.hardware.camera2.impl.CameraDeviceImpl deviceImpl = new android.hardware.camera2.impl.CameraDeviceImpl(cameraId, callback);
+     // wrap callback
+     ICameraDeviceCallbacks callbacks = deviceImpl.getCallbacks();
+     
+     // use binder to connect camera
+     ICameraService cameraService = CameraManagerGlobal.get().getCameraService();
+     cameraService.connectDevice(callbacks, cameraId,mContext.getOpPackageName());
+   }
+   
+   // frameworks/av/services/camera/libcameraservice/CameraService.cpp
+   Status CameraService::connectDevice(
+           const sp<hardware::camera2::ICameraDeviceCallbacks>& cameraCb,
+           const std::string& unresolvedCameraId,
+           const std::string& clientPackageName) {
+     // delegate open action to connectHelper
+     ret = connectHelper<hardware::camera2::ICameraDeviceCallbacks,CameraDeviceClient>(cameraCb,
+               cameraId, /*api1CameraId*/-1, clientPackageNameAdj);
+     return ret;
+   }
+   ```
+
+3. receive OpenCameraSuccess callback
+
+   ```java
+   // androidx.camera.camera2.internal.Camera2CameraImpl.StateCallback#onOpened
+   final class StateCallback extends CameraDevice.StateCallback {
+     public void onOpened(@NonNull CameraDevice cameraDevice) {
+       switch (mState) {
+         case OPENING:
+         case REOPENING:
+             setState(InternalState.OPENED);
+             openCaptureSession(); // ready to call startPreview
+             break;
+       }
+     }
+   }
+   ```
+
+4. start preview
+
+   ```java
+   // androidx.camera.camera2.internal.CaptureSession#open
+   public ListenableFuture<Void> open(@NonNull SessionConfig sessionConfig,
+               @NonNull CameraDevice cameraDevice,
+               @NonNull SynchronizedCaptureSessionOpener opener) {
+     switch (mState) {
+       case INITIALIZED:
+         // set state to GET_SURFACE
+         mState = State.GET_SURFACE; 
+         // get surface future
+         List<DeferrableSurface> surfaces = sessionConfig.getSurfaces();
+         mConfiguredDeferrableSurfaces = new ArrayList<>(surfaces);
+         mSynchronizedCaptureSessionOpener = opener;
+         ListenableFuture<Void> openFuture = FutureChain.from(
+     										// real get surface synchronously
+                         mSynchronizedCaptureSessionOpener.startWithDeferrableSurface(
+                                 mConfiguredDeferrableSurfaces,
+                                 TIMEOUT_GET_SURFACE_IN_MS))
+                 .transformAsync(
+           							// after get surface, then openCaptureSession
+                         surfaceList -> openCaptureSession(surfaceList, sessionConfig,
+                                 cameraDevice),
+                         mSynchronizedCaptureSessionOpener.getExecutor());
+     }
+   }
+   
+   // android.hardware.camera2.impl.CameraDeviceImpl#createCaptureSession
+   public void createCaptureSession(SessionConfiguration config)
+               throws CameraAccessException {
+     // config holds surfaces and callback
+     createCaptureSessionInternal(config.getInputConfiguration(), outputConfigs,
+               config.getStateCallback(), config.getExecutor(), config.getSessionType(),
+               config.getSessionParameters());
+   }
+   
+   // android.hardware.camera2.impl.ICameraDeviceUserWrapper#submitRequestList
+   public SubmitInfo submitRequestList(CaptureRequest[] requestList, boolean streaming)
+     // mRemoteDevice is ICameraDeviceUser$Stub$Proxy
+     // it's ipc
+     return mRemoteDevice.submitRequestList(requestList, streaming);
+   }
+   ```
+
+5. receive preview success callback
+
+   ```c++
+   // frameworks/av/camera/aidl/android/hardware/camera2/ICameraDeviceCallbacks.aidl
+   // ipc is received by android.hardware.camera2.impl.CameraDeviceImpl 
+   interface ICameraDeviceCallbacks
+   {
+       oneway void onDeviceError(int errorCode, in CaptureResultExtras resultExtras);
+       oneway void onDeviceIdle();
+       oneway void onCaptureStarted(in CaptureResultExtras resultExtras, long timestamp);
+       oneway void onResultReceived(in CameraMetadataNative result,
+                                    in CaptureResultExtras resultExtras,
+                                    in PhysicalCaptureResultInfo[] physicalCaptureResultInfos);
+       oneway void onPrepared(int streamId);
+       oneway void onRepeatingRequestError(in long lastFrameNumber,
+                                           in int repeatingRequestId);
+       oneway void onRequestQueueEmpty();
+   }
+   ```
+
+   

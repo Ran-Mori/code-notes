@@ -170,6 +170,21 @@
   // pass the surface to native
   private native void _setVideoSurface(Surface surface);
 
+## GLSurfaceView
+
+* source code 
+
+  ```java
+  // android.opengl.GLSurfaceView
+  public class GLSurfaceView extends SurfaceView implements SurfaceHolder.Callback2 {
+    private static class DefaultWindowSurfaceFactory implements EGLWindowSurfaceFactory {
+      public EGLSurface createWindowSurface(EGL10 egl, EGLDisplay display) {
+        // this method will get surfure from SurfaceHolder and pass it to native code.
+        return egl.eglCreateWindowSurface(display, config, nativeWindow, null);
+      }
+    }
+  }
+
 ## create a surface
 
 ```java
