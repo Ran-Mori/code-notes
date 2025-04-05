@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "./proto";
+
+service TimeService {
+  rpc GetCurrentTime (TimeRequest) returns (TimeResponse) {}
+}
+
+message TimeRequest {}
+
+message TimeResponse {
+  int64 unix_time = 1;
+} 
