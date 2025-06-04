@@ -334,4 +334,44 @@
 
 ***
 
-## 
+## DNS
+
+* java层调用
+
+  ```java
+  // java.net.Inet6AddressImpl#lookupHostByName
+  private static InetAddress[] lookupHostByName(String host, int netId) {
+    InetAddress[] addresses = Libcore.os.android_getaddrinfo(host, hints, netId);
+    return addresses;
+  }
+  ```
+
+* Libcore.os.android_getaddrinfo(host, hints, netId);
+
+  * 这是一个JNI方法，会调到AOSP中的代码
+
+* [libcore/luni/src/main/java/libcore/io/BlockGuardOs.java](https://cs.android.com/android/platform/superproject/main/+/main:libcore/luni/src/main/java/libcore/io/BlockGuardOs.java)
+
+  ```c++
+  public class BlockGuardOs extends ForwardingOs {
+    
+  }
+  ```
+
+* `getaddrinfo()`是POSIX标准的一个function。On Android, the C standard library (libc) is called **Bionic**. Bionic provides the implementation for functions like getaddrinfo.
+
+* [bionic/libc/bionic/netdb.cpp](https://cs.android.com/android/platform/superproject/main/+/main:bionic/libc/bionic/netdb.cpp)
+
+  ```c++
+  #include <netdb.h>
+  
+  netent* getnetbyaddr(uint32_t /*net*/, int /*type*/) {
+    return nullptr;
+  }
+  ```
+
+## APP vs kennel
+
+* 每一个APP启动，都会重新fork Linux进程然后启自己的虚拟机
+* 所有的class都是运行在虚拟机中，因此只要是java/kotlin文件，在不同的应用中就是完全隔离的
+* kennel层是Linux，完全不感知class这个东西，只提供系统调用方法供APP调用
