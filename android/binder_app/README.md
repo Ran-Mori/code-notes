@@ -131,3 +131,27 @@
    ```
 
 2. `onTransact()`方法会运行在服务端的一个线程池中，因此即使它很耗时，也应该用同步的方式去实现；但RPC返回耗时久，客户端不能放在UI线程执行
+
+## parcel
+
+### 過程
+
+1. process B wants to offer its own service, so it creates its Binder object (e.g., ActivityManagerService). It contacts the ServiceManager (using handle 0) and says, "Please register this Binder object under the name 'process-B-service'."
+2. The ServiceManager stores the mapping: String("process-B-service") -> handle(N).
+3. process A 通過 ServiceManager 獲取查詢"process-B-service"，獲取到了handle(N)
+4. process A從Parcel池裏獲取一個Parcel
+5. 調用writeToParcel()方法將需要傳遞的對象寫入Parcel中。這個過程不像Serializable需要使用反射，直接寫內存效率高
+6. 調用`public boolean transact(int code, @NonNull Parcel data, @Nullable Parcel reply, int flags)`方法，這個IBinder其實就是Process B的Binder對象引用
+7. 然後進入到kennel層，kennel收到code和這個Parcel對象
+8. kennel維護了一個紅黑數結構that maps handles to binder_node structs. binder_node contains a pointer to the target process's binder_proc struct and the memory address of the Binder object within that server process.
+9. binder driver looks up the target Binder object in Process B
+10. binder driver places the transaction in a queue for Process B and wakes up a binder thread in Process B to handle it.
+    * When a process wants to be a Binder server, it tells the driver it's ready to receive work. It does this by making an ioctl call with BINDER_WRITE_READ and specifying a command BC_ENTER_LOOPER.
+    * The woken-up thread's ioctl call, which was sleeping in the kernel, now returns. The data returned to it from the kernel includes a command BR_TRANSACTION. This command signifies "You have a new transaction to process." The Parcel data is also made available to it (via the memory mapping).
+11. kennel不執行對象深拷貝，將process A的對象拷貝一個到process B；It maps the memory region containing the Parcel data into the address space of the target process (Process B).
+12. process B的 onTransact() 被執行
+13. process B執行 createFromParcel() 讀出數據
+
+### 注意
+
+1. 整個過程只涉及一次process A往kennel空間寫，process B從kennel空間讀
