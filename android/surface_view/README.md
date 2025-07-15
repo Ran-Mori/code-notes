@@ -508,9 +508,41 @@ class ViewRootImpl {
 
 
 
+## Texture
 
+### what is?
 
+* Imagine you have a plain, uncolored wooden box. This box is just a **shape** (its geometry: a cube with 6 square faces). Now, you want to make this box look like a Christmas present. You take a roll of colorful gift wrap with pictures of reindeer on it and wrap the box. In this analogy:
 
+  - The **wooden box** is your View or 3D model (the geometry/shape).
+  - The **gift wrap paper** is the **texture**.
+  - The process of wrapping the box is called **texture mapping**.
+
+  That's the core idea! **A texture is simply an image that gets "wrapped" or "painted" onto a shape.**
+
+* In computer graphics, a **texture** is an image (a 2D array of pixels) that is used by the **GPU (Graphics Processing Unit)** to add detail to a shape.
+
+### perfomance
+
+* Imagine you tell the main processor (CPU), "Draw this 500x500 pixel photo." The CPU would have to go through a loop, 250,000 times (500 * 500), calculate the color of each pixel, and place it on the screen one by one. This is slow and inefficient.
+
+* You tell the system, "I want to draw this photo inside this rectangle on the screen."
+
+  1. **Upload:** The Android rendering system takes your image data (from a Bitmap object) and **uploads it to the GPU's dedicated, super-fast memory**. At this moment, your Bitmap data becomes a **texture** that the GPU can access instantly.
+  2. **Instruct:** You then tell the GPU, "Take texture #123 (your uploaded image) and paint it onto the four corners of this rectangle."
+  3. **Render:** The GPU, with its thousands of parallel cores, instantly maps all the pixels from the texture onto the shape on the screen in a single operation. This is massively faster.
+
+  This process of using the GPU to do the drawing work is what **Hardware Acceleration** in Android is all about.
+
+### TextureView
+
+* This is a special View designed for a specific purpose. Unlike a normal View, a TextureView's content is **directly a stream of texture data**. This is perfect for things that generate images continuously, like:
+
+  - **Video Playback:** Each frame of a video is sent to the GPU as a texture and displayed on the TextureView.
+  - **Camera Preview:** The live feed from the camera is a stream of frames, each rendered as a texture.
+  - **OpenGL Games:** Rendering a 3D game scene within a part of your UI layout.
+
+  Because a TextureView behaves like a normal View, it can be transformed (moved, scaled, rotated, animated) just like any other view, which is a major advantage.
 
 ## 待定
 
