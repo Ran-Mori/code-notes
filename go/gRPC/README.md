@@ -29,11 +29,6 @@ Before running this project, you need to install the following dependencies on y
    brew install docker docker-compose
    ```
 
-5. **Netcat (for health checks)**
-   ```bash
-   brew install netcat
-   ```
-
 ## Project Structure
 
 ```
@@ -87,50 +82,15 @@ gRPC/
    In a new terminal, you can test the service using curl:
 
    ```bash
-   curl http://localhost:8080/time
+   curl http://127.0.0.1:8080/time
    ```
 
    You should receive a response with the current Unix timestamp.
-
-## Service Details
-
-### gRPC Server
-- Runs on port 50051
-- Implements the TimeService defined in proto/time.proto
-- Returns the current Unix timestamp when requested
-- Includes health check to ensure service availability
-
-### HTTP Client
-- Runs on port 8080
-- Exposes an HTTP endpoint at `/time`
-- Forwards requests to the gRPC server
-- Returns the Unix timestamp as a string
-- Waits for server to be healthy before starting
 
 ## Environment Configuration
 
 The services are configured with the following environment variables:
 - `GOPROXY=https://goproxy.cn,direct`: Ensures reliable Go module downloads
-
-## Troubleshooting
-
-1. **If you encounter network issues:**
-   - Make sure Docker is running
-   - Check if ports 50051 and 8080 are available
-   - Verify that the containers are running with `docker ps`
-   - Check the health status with `docker-compose ps`
-
-2. **If you encounter build issues:**
-   - Make sure all prerequisites are installed
-   - Check that the GOPATH is set correctly
-   - Ensure protoc and its plugins are in your PATH
-   - Verify that netcat is installed for health checks
-
-3. **If the service is not responding:**
-   - Check the Docker logs with `docker-compose logs`
-   - Verify that both containers are running
-   - Make sure there are no firewall issues
-   - Check the health check status with `docker inspect <container_id>`
 
 ## Cleanup
 
