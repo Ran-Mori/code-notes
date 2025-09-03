@@ -1,31 +1,39 @@
 #include <iostream>
-#include <csignal>
-#include <chrono>
-#include <thread>
+#include <memory>
+#include "Application.h"
 
-// Signal handler function
-void signalHandler(int signalNumber) {
-    std::cout << "Signal received: " << signalNumber << std::endl;
-    // Perform necessary actions or cleanup here
-    // ...
-    // Terminate the program
-    std::exit(signalNumber);
-}
-
+/**
+ * @brief Main entry point of the application
+ * 
+ * This function creates and runs the main application instance,
+ * handling any exceptions that might occur during execution.
+ */
 int main() {
-    std::cout << "Hello, World!" << std::endl;
+    try {
+        // Create application instance with default parameters
+        auto app = std::make_unique<Application>();
 
-    // Register signal handler for SIGSYS
-    std::signal(SIGSYS, signalHandler);
-
-    std::cout << "Signal handling example. Press Ctrl+C to generate SIGINT." << std::endl;
-
-    // Infinite loop to keep the program running until a signal is received
-    for (int i = 0; i < 1000; ++i) {
-        std::cout << "start sleep " << i + 1 << " second" << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        // Initialize the application
+        if (!app->initialize()) {
+            std::cerr << "Failed to initialize application" << std::endl;
+            return 1;
+        }
+        
+        // Run the main application loop
+        const int exitCode = app->run();
+        
+        // Shutdown gracefully
+        app->shutdown();
+        
+        return exitCode;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Fatal error: " << e.what() << std::endl;
+        return 1;
+    } catch (...) {
+        std::cerr << "Unknown fatal error occurred" << std::endl;
+        return 1;
     }
-    return 0;
 }
 
 
