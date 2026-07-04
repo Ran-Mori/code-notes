@@ -16,6 +16,7 @@ import com.render.common.label
 import com.render.common.sectionTitle
 import com.render.common.spacer
 import com.render.renderthread.RenderThreadLabActivity
+import com.render.textureview.TextureViewLabActivity
 import com.render.textureupload.TextureUploadLabActivity
 
 class MainActivity : Activity() {
@@ -30,6 +31,11 @@ class MainActivity : Activity() {
             title = "大纹理上传",
             description = "用大 Bitmap + 只改 1px 的方式模拟脏纹理反复上传到 GPU，重点观察 RenderThread/HWUI 的上传压力。",
             target = TextureUploadLabActivity::class.java
+        ),
+        StudyRoute(
+            title = "TextureView 学习",
+            description = "把 TextureView 拆成 View、SurfaceTexture、Surface、BufferQueue 和 producer/consumer，观察它如何接入普通 View 树。",
+            target = TextureViewLabActivity::class.java
         )
     )
 

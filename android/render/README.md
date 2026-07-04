@@ -6,6 +6,7 @@
 
 - [RenderThread 学习](docs/renderthread.md)：观察 `Choreographer#doFrame`、`View.onDraw()`、`FrameMetrics`、属性动画、SurfaceView 对照组，以及 Perfetto 中真正的 `RenderThread`。
 - [大纹理上传](docs/texture-upload.md)：模拟大 Bitmap 内容变脏后，下一帧 `drawBitmap` 触发 HWUI 重新上传纹理到 GPU 的卡顿场景。
+- [TextureView 学习](docs/textureview.md)：把 `TextureView` 拆成 `View`、`SurfaceTexture`、`Surface`、`BufferQueue` 和 producer/consumer，观察它如何作为普通 View 参与合成。
 
 ## 代码结构
 
@@ -22,6 +23,9 @@ app/src/main/java/com/render/
   textureupload/
     TextureUploadLabActivity.kt      # 大纹理上传学习页
     TextureUploadLabView.kt          # 大 Bitmap / dirty / drawBitmap 观察点
+  textureview/
+    TextureViewLabActivity.kt        # TextureView 学习页
+    TextureViewLabView.kt            # SurfaceTexture listener / producer Surface / buffer 更新观察点
 ```
 
 后面新增学习主题时，优先按这个形状拆：
@@ -49,12 +53,13 @@ adb shell am start -n com.render/.MainActivity
 ```bash
 adb shell am start -n com.render/.renderthread.RenderThreadLabActivity
 adb shell am start -n com.render/.textureupload.TextureUploadLabActivity
+adb shell am start -n com.render/.textureview.TextureViewLabActivity
 ```
 
 看日志：
 
 ```bash
-adb logcat -s RenderThreadLab TextureUploadLab
+adb logcat -s RenderThreadLab TextureUploadLab TextureViewLab
 ```
 
 ## Perfetto
