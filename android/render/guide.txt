@@ -1,2 +1,31 @@
-# AS version ->  Chipmunk | 2021.2.1 Canary 1
-# build date -> on October 13, 2021
+# RenderThread study guide
+
+1. Run the app and keep Logcat open:
+
+   ```bash
+   adb logcat -s RenderThreadLab
+   ```
+
+2. Remember the boundary:
+
+   ```text
+   Choreographer#doFrame(main)
+     -> View.onDraw(main, records drawing commands)
+     -> RenderThread syncFrameState / DrawFrame
+     -> GPU / SurfaceFlinger
+   ```
+
+3. Turn on each switch in the app and watch which counter changes:
+
+   - Per-frame invalidate: `RenderThreadLabView.onDraw()` count rises.
+   - Heavy onDraw: `FrameMetrics DRAW_DURATION` and slow-frame counts rise.
+   - Main-thread sleep: the UI stalls because new View state cannot be produced.
+   - Property animation: visual motion can happen without your custom View doing a fresh `onDraw` every frame.
+   - SurfaceView: `AppSurfaceThread` is an app-owned producer thread, not Android RenderThread.
+
+4. Capture Perfetto when you want the real RenderThread timeline:
+
+   ```bash
+   adb shell perfetto -o /data/misc/perfetto-traces/renderthread-lab.pftrace -t 15s --app com.render sched freq idle gfx view wm am binder_driver
+   adb pull /data/misc/perfetto-traces/renderthread-lab.pftrace .
+   ```

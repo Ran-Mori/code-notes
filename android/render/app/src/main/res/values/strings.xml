@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">render</string>
-    <string name="text_view">text_view</string>
+    <string name="app_name">RenderThread Lab</string>
+    <string name="render_node_transform">RenderNode\ntransform</string>
 </resources>
