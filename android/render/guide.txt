@@ -1,31 +1,29 @@
-# RenderThread study guide
+# Render study guide
 
-1. Run the app and keep Logcat open:
+1. Run the app router:
 
    ```bash
-   adb logcat -s RenderThreadLab
+   ./gradlew assembleDebug
+   adb install -r app/build/outputs/apk/debug/app-debug.apk
+   adb shell am start -n com.render/.MainActivity
    ```
 
-2. Remember the boundary:
+2. Pick one learning page:
 
    ```text
-   Choreographer#doFrame(main)
-     -> View.onDraw(main, records drawing commands)
-     -> RenderThread syncFrameState / DrawFrame
-     -> GPU / SurfaceFlinger
+   RenderThread 学习 -> docs/renderthread.md
+   大纹理上传 -> docs/texture-upload.md
    ```
 
-3. Turn on each switch in the app and watch which counter changes:
-
-   - Per-frame invalidate: `RenderThreadLabView.onDraw()` count rises.
-   - Heavy onDraw: `FrameMetrics DRAW_DURATION` and slow-frame counts rise.
-   - Main-thread sleep: the UI stalls because new View state cannot be produced.
-   - Property animation: visual motion can happen without your custom View doing a fresh `onDraw` every frame.
-   - SurfaceView: `AppSurfaceThread` is an app-owned producer thread, not Android RenderThread.
-
-4. Capture Perfetto when you want the real RenderThread timeline:
+3. Keep Logcat open:
 
    ```bash
-   adb shell perfetto -o /data/misc/perfetto-traces/renderthread-lab.pftrace -t 15s --app com.render sched freq idle gfx view wm am binder_driver
-   adb pull /data/misc/perfetto-traces/renderthread-lab.pftrace .
+   adb logcat -s RenderThreadLab TextureUploadLab
+   ```
+
+4. Capture Perfetto:
+
+   ```bash
+   adb shell perfetto -o /data/misc/perfetto-traces/render-lab.pftrace -t 15s --app com.render sched freq idle gfx view wm am binder_driver
+   adb pull /data/misc/perfetto-traces/render-lab.pftrace .
    ```
