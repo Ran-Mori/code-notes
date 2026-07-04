@@ -94,3 +94,31 @@ adb shell dumpsys gfxinfo com.render framestats
 - `ThreadedRenderer.java`: https://android.googlesource.com/platform/frameworks/base/+/master/core/java/android/view/ThreadedRenderer.java
 - Perfetto CLI simple mode: https://perfetto.dev/docs/reference/perfetto-cli
 - ATrace app instrumentation: https://perfetto.dev/docs/getting-started/atrace
+
+## vsync注册流程
+App通过`android.view.Choreographer#postFrameCallback()`表示自己对下一次vsync信号感兴趣
+
+最终会通过`android.view.DisplayEventReceiver#nativeScheduleVsync`，由app层告诉framework层自己对下一次vsync信号感兴趣
+
+native的DisplayEventReceiver和SurfaceFlinger有一个EventLoop机制
+
+SurfaceFlinger通过Hardward Abstract Layer和Hardware Composer建立联系
+
+一次注册只收到一次回调，下一次回调需要自己再注册
+
+## RenderThread
+
+一个App进程只有一个native层的RenderThread线程，但是可以拥有不同的android.view.ThreadedRenderer、android.graphics.HardwareRenderer对象
+
+native进程的RenderThread维护一个渲染队列，队列中的每个任务有自己的Surface、CanvasContext
+
+App进程一旦提交了指令后，就可以queueBuffer，GPU是否绘制完毕交由后面SurfaceFlinger来控制
+
+## BLASTBufferQueue
+
+BLASTBufferQueue - 为了减少 buffer 和窗口属性不同步导致的显示问题，并提高窗口 resize / SurfaceView / 转场动画等场景的稳定性
+
+三缓冲可以减少App空闲等待；但如果app绘制得过快，就是producer过快，由于consumer还是只有16.6ms的速率，因此某些touch操作反而可能延迟一帧
+
+
+
