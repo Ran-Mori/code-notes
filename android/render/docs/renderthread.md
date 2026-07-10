@@ -97,6 +97,20 @@ BLASTBufferQueue 用于减少 buffer 和窗口属性不同步导致的显示问�
 
 三缓冲可以减少 App 空闲等待；但如果 App 绘制得过快，就是 producer 过快，由于 consumer 还是只有 16.6ms 的速率，因此某些 touch 操作反而可能延迟一帧。
 
+### RenderThread
+**优点**
+1. 让主线程更聚焦于事件循环，指令提交，降低主线程压力，使逻辑更解耦
+2. 只需要维护一份GPU通信的上下文，缓存，资源开销更小
+3. 可以保障渲染的时序性，后提交的渲染指令不会先出现先展示
+4. GPU资源，Skia等统一管理，理论上有更大的优化空间
+5. 更适合帧调度。渲染任务不是普通的后台任务，收到Vsync、SurfaceFlinger等的控制，单一职责更聚焦
+
+**缺点**
+1. 当UI树复杂，渲染任务重时，单RenderThread会成为瓶颈
+2. 和主线程分离，渲染指令，RenderNode，DisplayList等都需要线程间同步的开销
+3. 调试门槛变高。分析渲染问题只有Perfetto看RenderThread过程，无法app层闭环
+4. 业务无法控制优先级，无法指令这个的渲染优先级高，这个的优先级低，因为优先级由底层队列控制
+
 ## 官方源码/文档入口
 
 - Android graphics architecture: https://source.android.com/docs/core/graphics/architecture
