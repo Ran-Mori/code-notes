@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Render Lab</string>
+    <string name="bitmap_gl_normal_view_overlay">normal View overlay</string>
     <string name="render_node_transform">RenderNode\ntransform</string>
 </resources>

@@ -10,6 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import com.render.bitmapgl.BitmapOpenGlLabActivity
 import com.render.common.button
 import com.render.common.dp
 import com.render.common.label
@@ -36,6 +37,11 @@ class MainActivity : Activity() {
             title = "TextureView 学习",
             description = "把 TextureView 拆成 View、SurfaceTexture、Surface、BufferQueue 和 producer/consumer，观察它如何接入普通 View 树。",
             target = TextureViewLabActivity::class.java
+        ),
+        StudyRoute(
+            title = "Bitmap + OpenGL + TextureView",
+            description = "BitmapFactory 解码 JPG，显式上传成 GL 纹理，再由 EGL/OpenGL producer 把 shader 绘制结果输出到 TextureView。",
+            target = BitmapOpenGlLabActivity::class.java
         )
     )
 

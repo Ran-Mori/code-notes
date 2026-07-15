@@ -7,6 +7,7 @@
 - [RenderThread 学习](docs/renderthread.md)：观察 `Choreographer#doFrame`、`View.onDraw()`、`FrameMetrics`、属性动画、SurfaceView 对照组，以及 Perfetto 中真正的 `RenderThread`。
 - [大纹理上传](docs/texture-upload.md)：模拟大 Bitmap 内容变脏后，下一帧 `drawBitmap` 触发 HWUI 重新上传纹理到 GPU 的卡顿场景。
 - [TextureView 学习](docs/textureview.md)：把 `TextureView` 拆成 `View`、`SurfaceTexture`、`Surface`、`BufferQueue` 和 producer/consumer，观察它如何作为普通 View 参与合成。
+- [BitmapFactory → OpenGL → TextureView](docs/bitmap-opengl-textureview.md)：解码项目内置 JPG，显式上传为 OpenGL 纹理，再通过 EGL window surface 把 shader 绘制结果输出到 TextureView。
 
 ## 代码结构
 
@@ -26,6 +27,13 @@ app/src/main/java/com/render/
   textureview/
     TextureViewLabActivity.kt        # TextureView 学习页
     TextureViewLabView.kt            # SurfaceTexture listener / producer Surface / buffer 更新观察点
+  bitmapgl/
+    BitmapOpenGlLabActivity.kt       # Bitmap/OpenGL/TextureView 学习页
+    BitmapOpenGlLabView.kt           # TextureView 生命周期 / producer Surface / GL 线程
+    BitmapTextureRenderer.kt         # BitmapFactory / EGL / shader / texture / draw / swap
+
+app/src/main/res/drawable-nodpi/
+  bitmap_gl_sample.jpg               # 960x640 方向与宽高比测试 JPG
 ```
 
 后面新增学习主题时，优先按这个形状拆：
@@ -54,17 +62,18 @@ adb shell am start -n com.render/.MainActivity
 adb shell am start -n com.render/.renderthread.RenderThreadLabActivity
 adb shell am start -n com.render/.textureupload.TextureUploadLabActivity
 adb shell am start -n com.render/.textureview.TextureViewLabActivity
+adb shell am start -n com.render/.bitmapgl.BitmapOpenGlLabActivity
 ```
 
 看日志：
 
 ```bash
-adb logcat -s RenderThreadLab TextureUploadLab TextureViewLab
+adb logcat -s RenderThreadLab TextureUploadLab TextureViewLab BitmapOpenGlLab
 ```
 
 ## Perfetto
 
-两个学习页都可以用同一个 App trace 命令开始：
+所有学习页都可以用同一个 App trace 命令开始：
 
 ```bash
 adb shell perfetto -o /data/misc/perfetto-traces/render-lab.pftrace -t 15s --app com.render sched freq idle gfx view wm am binder_driver
